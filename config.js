@@ -1,6 +1,6 @@
 const config = {
     mongodb: {
-        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/map_annotation',
+        uri: process.env.MONGODB_URI || 'mongodb://mongodb:27017/map_annotation',
         options: {
             // MongoDB 7.0+ 连接配置
             connectTimeoutMS: 30000,
