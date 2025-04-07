@@ -11,6 +11,8 @@ services:
       mongodb:
         condition: service_healthy
     restart: always
+    networks:
+      - app-network
 
   mongodb:
     image: mongo:latest
@@ -25,6 +27,12 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   mongodb_data:
