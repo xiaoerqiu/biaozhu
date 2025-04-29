@@ -6,6 +6,7 @@
     <title>地图标绘系统</title>
     <link rel="stylesheet" href="./css/antd.css">
     <link rel="stylesheet" href="./css/custom.css">
+    <link rel="stylesheet" href="./css/map-styles.css">
     <!-- 百度地图API -->
     <script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak=gs3yvswcNTXmqZcUWPPILcdGzQRNs7y2"></script>
     <!-- Ant Design -->
@@ -15,84 +16,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/antd/4.24.14/antd.min.js"></script>
 </head>
 <body>
-    <div class="ant-layout">
-        <header class="ant-layout-header">
-            <div class="ant-page-header">
-                <h1 style="margin: 0;">地图标绘系统</h1>
-            </div>
+    <div class="ma-app">
+        <header class="ma-header">
+            <span class="ma-title">地图标绘系统</span>
         </header>
-        
-        <main class="ant-layout-content">
-            <div class="map-section">
-                <div id="map-container"></div>
-            </div>
-            
-            <div class="sidebar">
-                <div class="upload-section">
-                    <div class="ant-collapse">
-                        <div class="ant-collapse-item">
-                            <div class="ant-collapse-header" role="button" tabindex="0" aria-expanded="false">
-                                <span class="ant-collapse-arrow"><svg viewBox="64 64 896 896" focusable="false" data-icon="right" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.9 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z"></path></svg></span>
-                                上传Excel文件
-                            </div>
-                            <div class="ant-collapse-content ant-collapse-content-inactive">
-                                <div class="ant-collapse-content-box">
-                                    <p>请上传包含地址信息的Excel文件（必须包含address列）</p>
-                                    <div class="download-sample">
-                                        <a href="./examples/sample.xlsx" class="ant-btn ant-btn-link" download>下载示例Excel文件</a>
-                                    </div>
-                                    <form id="upload-form" enctype="multipart/form-data">
-                                        <div class="ant-upload ant-upload-select">
-                                            <input type="file" id="excel-file" name="file" accept=".xlsx,.xls" style="display: none;">
-                                            <button type="button" class="ant-btn ant-btn-primary" id="upload-btn">选择文件并上传</button>
-                                        </div>
-                                    </form>
-                                    <div id="upload-status" class="ant-alert ant-alert-info" style="margin-top: 16px; display: none;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <main class="ma-main">
+            <section class="ma-map-area"><div id="map-container"></div></section>
+            <section class="address-drawer" id="drawerList">
+                <button class="drawer-toggle-btn" id="drawerToggleBtn" title="隐藏/显示地址列表">
+                    <svg viewBox="0 0 1024 1024" width="16" height="16" fill="currentColor">
+                        <path d="M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.8 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z"></path>
+                    </svg>
+                </button>
+                <button class="ma-upload-btn" id="upload-btn">
+                    <svg width="20" height="20" fill="currentColor" style="vertical-align:middle;margin-right:6px;"><use xlink:href="#icon-upload"></use></svg>
+                    上传Excel文件
+                </button>
+                <input type="file" id="excel-file" name="file" accept=".xlsx,.xls" style="display:none;">
+                <div class="ma-list-title">地址列表</div>
+                <ul class="ma-address-list" id="address-list">
+                    <!-- 地址卡片由JS渲染 -->
+                </ul>
+                <div class="ma-pagination">
+                    <button class="ma-page-btn" id="prev-page">&lt;</button>
+                    <span class="ma-page-info"><span id="current-page">1</span> / <span id="total-pages">1</span></span>
+                    <button class="ma-page-btn" id="next-page">&gt;</button>
                 </div>
-                
-                <div class="address-list-container">
-                    <div class="ant-card">
-                        <div class="ant-card-head">
-                            <div class="ant-card-head-title">地址列表</div>
-                        </div>
-                        <div class="ant-card-body">
-                            <ul class="address-list ant-list ant-list-split" id="address-list"></ul>
-                            <div class="pagination">
-                                <div class="ant-pagination ant-pagination-simple">
-                                    <button class="ant-pagination-prev" id="prev-page" disabled>
-                                        <span class="ant-pagination-item-link" aria-label="上一页">
-                                            <span role="img" aria-label="left" class="anticon anticon-left">
-                                                <svg viewBox="64 64 896 896" focusable="false" data-icon="left" width="1em" height="1em" fill="currentColor" aria-hidden="true">
-                                                    <path d="M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z"></path>
-                                                </svg>
-                                            </span>
-                                        </span>
-                                    </button>
-                                    <div class="ant-pagination-simple-pager">
-                                        <input type="text" size="3" id="current-page" value="1">
-                                        <span class="ant-pagination-slash">/</span>
-                                        <span id="total-pages">5</span>
-                                    </div>
-                                    <button class="ant-pagination-next" id="next-page" disabled>
-                                        <span class="ant-pagination-item-link" aria-label="下一页">
-                                            <span role="img" aria-label="right" class="anticon anticon-right">
-                                                <svg viewBox="64 64 896 896" focusable="false" data-icon="right" width="1em" height="1em" fill="currentColor" aria-hidden="true">
-                                                    <path d="M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.9 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z"></path>
-                                                </svg>
-                                            </span>
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                <div id="upload-status" class="ma-upload-status"></div>
+            </section>
         </main>
+        <!-- 移动端地图/列表切换按钮 -->
+        <button class="ma-fab" id="toggleViewBtn" style="display:none;">
+            <svg width="24" height="24" fill="currentColor"><use xlink:href="#icon-list"></use></svg>
+        </button>
+        <!-- SVG 图标定义 -->
+        <svg style="display:none;">
+            <symbol id="icon-upload" viewBox="0 0 1024 1024"><path d="M512 128l256 256h-160v256h-192V384H256z"/><path d="M128 832h768v64H128z"/></symbol>
+            <symbol id="icon-list" viewBox="0 0 1024 1024"><path d="M128 192h768v64H128zM128 480h768v64H128zM128 768h768v64H128z"/></symbol>
+        </svg>
     </div>
     
     <script src="./js/main.js"></script>

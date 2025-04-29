@@ -109,17 +109,20 @@ if (!fs.existsSync('uploads')) {
 // 获取所有已存储的地址
 app.get('/addresses', async (req, res) => {
     if (!isConnected) {
-        return res.status(503).json({ error: 'MongoDB连接不可用' });
+        logger.warn('尝试获取地址数据时MongoDB连接不可用');
+        return res.status(503).json({ success: false, error: 'MongoDB连接不可用' });
     }
     try {
+        logger.info('正在获取地址数据...');
         const addresses = await Address.find().sort({ createdAt: -1 });
+        logger.info(`成功获取${addresses.length}条地址数据`);
         res.json({
             success: true,
             data: addresses
         });
     } catch (error) {
         logger.error('获取地址数据失败:', error);
-        res.status(500).json({ error: '获取地址数据失败' });
+        res.status(500).json({ success: false, error: '获取地址数据失败: ' + error.message });
     }
 });
 
