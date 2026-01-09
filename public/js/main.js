@@ -179,9 +179,31 @@ function initDrawerToggle() {
     };
 }
 
+// 模拟酒店数据 - 杭州西湖周边
+const mockHotelData = [
+    { name: '杭州西湖国宾馆', address: '杭州市西湖区杨公堤18号', type: '豪华湖景大床房', lng: 120.130953, lat: 30.246273 },
+    { name: '杭州香格里拉饭店', address: '杭州市西湖区北山路78号', type: '高级园景双床房', lng: 120.147835, lat: 30.261654 },
+    { name: '浙江西子宾馆', address: '杭州市西湖区南山路37号', type: '西湖景观套房', lng: 120.148521, lat: 30.241876 },
+    { name: '杭州柏悦酒店', address: '杭州市上城区湖滨路28号', type: '豪华城景房', lng: 120.169324, lat: 30.251432 },
+    { name: '杭州JW万豪酒店', address: '杭州市西湖区湖墅南路28号', type: '行政大床房', lng: 120.163287, lat: 30.283654 },
+    { name: '杭州雷迪森龙井庄园', address: '杭州市西湖区龙井路190号', type: '龙井茶园别墅', lng: 120.117532, lat: 30.228976 },
+    { name: '杭州西溪悦榕庄', address: '杭州市西湖区紫金港路21号', type: '水上别墅', lng: 120.062145, lat: 30.276543 },
+    { name: '杭州泛海钓鱼台酒店', address: '杭州市江干区钱江路1366号', type: '总统套房', lng: 120.221876, lat: 30.246789 },
+    { name: '杭州凯悦酒店', address: '杭州市上城区湖滨路28号', type: '湖景套房', lng: 120.168754, lat: 30.249321 },
+    { name: '杭州法云安缦', address: '杭州市西湖区法云弄22号', type: '法云村舍', lng: 120.099876, lat: 30.234567 }
+];
+
 document.addEventListener('DOMContentLoaded', () => {
-    initMap();
-    loadStoredAddresses();
+    // 等待百度地图API加载完成后初始化地图
+    window.onBaiduMapLoaded(() => {
+        initMap();
+        // 加载模拟数据展示
+        addresses = mockHotelData;
+        renderAddressList();
+        markAddressesOnMap(addresses);
+        console.log('已加载模拟酒店数据:', addresses.length, '条');
+    });
+    
     initDrawerToggle();
 
     // 上传按钮

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const xlsx = require('xlsx');
@@ -190,10 +191,13 @@ app.listen(port, () => {
 });
 
 // 优雅关闭
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
     logger.info('收到 SIGTERM 信号，准备关闭服务...');
-    mongoose.connection.close(() => {
+    try {
+        await mongoose.connection.close();
         logger.info('MongoDB连接已关闭');
-        process.exit(0);
-    });
+    } catch (error) {
+        logger.error('关闭MongoDB连接失败:', error);
+    }
+    process.exit(0);
 });

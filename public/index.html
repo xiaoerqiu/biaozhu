@@ -7,8 +7,72 @@
     <link rel="stylesheet" href="./css/antd.css">
     <link rel="stylesheet" href="./css/custom.css">
     <link rel="stylesheet" href="./css/map-styles.css">
-    <!-- 百度地图API -->
-    <script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak=gs3yvswcNTXmqZcUWPPILcdGzQRNs7y2"></script>
+    <!-- 百度地图API - 动态加载 -->
+    <script>
+        // 百度地图API加载状态
+        window.baiduMapLoaded = false;
+        window.baiduMapCallbacks = [];
+        
+        // 注册百度地图加载完成回调
+        window.onBaiduMapLoaded = function(callback) {
+            if (window.baiduMapLoaded && window.BMap && window.BMap.Map) {
+                callback();
+            } else {
+                window.baiduMapCallbacks.push(callback);
+            }
+        };
+        
+        // 百度地图加载完成回调
+        window.initBaiduMap = function() {
+            window.baiduMapLoaded = true;
+            console.log('百度地图API加载成功');
+            window.baiduMapCallbacks.forEach(cb => cb());
+            window.baiduMapCallbacks = [];
+        };
+        
+        // 动态加载百度地图API
+        (function() {
+            fetch('/api/map-key')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.apiKey) {
+                        // 百度地图JavaScript API 3.0 异步加载
+                        window.BMap_loadScriptTime = (new Date).getTime();
+                        const script = document.createElement('script');
+                        script.type = 'text/javascript';
+                        script.src = `https://api.map.baidu.com/getscript?type=webgl&v=1.0&ak=${data.apiKey}&services=&t=${Date.now()}`;
+                        
+                        script.onload = function() {
+                            // 检测BMapGL是否加载成功
+                            let checkCount = 0;
+                            const checkBMap = setInterval(() => {
+                                checkCount++;
+                                if (window.BMapGL && window.BMapGL.Map) {
+                                    clearInterval(checkBMap);
+                                    // 创建BMap别名以兼容旧代码
+                                    window.BMap = window.BMapGL;
+                                    window.initBaiduMap();
+                                } else if (checkCount > 50) {
+                                    clearInterval(checkBMap);
+                                    console.error('百度地图API加载超时');
+                                }
+                            }, 100);
+                        };
+                        
+                        script.onerror = function() {
+                            console.error('百度地图API脚本加载失败');
+                        };
+                        
+                        document.head.appendChild(script);
+                    } else {
+                        console.error('无法获取百度地图API密钥');
+                    }
+                })
+                .catch(err => {
+                    console.error('获取百度地图API密钥失败:', err);
+                });
+        })();
+    </script>
     <!-- Ant Design -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
