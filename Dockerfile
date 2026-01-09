@@ -6,7 +6,7 @@ WORKDIR /app
 # 复制 package.json 和 package-lock.json
 COPY package*.json ./
 
-# 安装所有依赖并生成正确的 package-lock.json
+# 安装所有依赖
 RUN npm install
 
 # 复制项目文件
@@ -17,27 +17,23 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# 安装 Python 和编译工具（better-sqlite3 需要）
+RUN apk add --no-cache python3 make g++
+
 # 从构建阶段复制package*.json文件
 COPY --from=builder /app/package*.json ./
 
-# 从构建阶段复制node_modules目录，确保所有依赖都被正确复制
+# 从构建阶段复制node_modules目录
 COPY --from=builder /app/node_modules ./node_modules
 
 # 复制其他应用文件
 COPY --from=builder /app .
 
-# 复制启动脚本
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
-
-# 确保xlsx模块被正确安装
-RUN npm list xlsx || npm install xlsx
-
-# 创建 uploads 目录
-RUN mkdir -p uploads
+# 创建必要的目录
+RUN mkdir -p uploads data logs
 
 # 暴露端口
 EXPOSE 3000
 
-# 使用启动脚本启动应用
-CMD ["/app/docker-entrypoint.sh"]
+# 启动应用
+CMD ["npm", "start"]

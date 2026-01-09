@@ -1,147 +1,151 @@
 # 地图标注系统
 
-一个基于百度地图的地址标注可视化系统，支持上传Excel文件批量标注地点位置。
+基于百度地图的轻量级地址标注与可视化系统，支持批量导入Excel数据并在地图上展示标记点。
 
-## 功能特性
+## ✨ 功能特性
 
-- ✅ **Excel文件解析** - 支持上传.xlsx/.xls格式文件
-- 🗺️ **地图标注** - 自动在百度地图上标注地址位置
-- 📍 **位置可视化** - 直观显示多个地点的相对位置关系
-- 🏷️ **信息展示** - 显示酒店名称、地址、房型等详细信息
-- 💾 **数据持久化** - MongoDB存储，支持数据恢复
-- 📱 **响应式设计** - 支持PC和移动端访问
+- 📍 **批量地址标注**：支持Excel文件批量导入地址数据
+- 🗺️ **地图可视化**：基于百度地图API展示所有地址标记
+- 🎯 **地理编码**：自动将地址转换为地图坐标
+- 💾 **数据持久化**：使用SQLite轻量级数据库存储
+- 🐳 **容器化部署**：Docker容器化部署，开箱即用
+- 📱 **响应式设计**：支持桌面和移动端访问
 
-## 技术栈
+## 🏗️ 技术架构
 
-- **后端**: Node.js + Express
-- **数据库**: MongoDB
-- **地图服务**: 百度地图API
-- **文件解析**: xlsx
-- **日志**: Winston
+### 前端
+- HTML5 + CSS3 + JavaScript
+- 百度地图JavaScript API v3.0
+- 响应式布局设计
 
-## 前置要求
+### 后端
+- Node.js + Express
+- SQLite数据库（better-sqlite3）
+- Multer文件上传
+- xlsx Excel文件解析
 
-- Node.js >= 14.0
-- MongoDB >= 4.0
-- 百度地图API密钥（[申请地址](https://lbsyun.baidu.com/apiconsole/key)）
+### 部署
+- Docker + Docker Compose
+- Nginx反向代理（可选）
 
-## 快速开始
+## 📋 系统要求
 
-### 1. 安装依赖
+- Node.js 18+
+- Docker & Docker Compose（容器化部署）
+- 百度地图API密钥
 
-```bash
-npm install
-```
+## 🚀 快速开始
+
+### 1. 获取百度地图API密钥
+
+访问 [百度地图开放平台](https://lbsyun.baidu.com/apiconsole/key) 申请API密钥
 
 ### 2. 配置环境变量
-
-复制环境变量模板并修改配置：
 
 ```bash
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，配置以下关键参数：
+编辑 `.env` 文件，填入您的百度地图API密钥：
 
 ```env
-# MongoDB连接地址
-MONGODB_URI=mongodb://localhost:27017/map_annotation
-
-# 服务器端口
 PORT=3000
+LOG_LEVEL=info
+LOG_FILE=./logs/app.log
 
-# 百度地图API密钥（必填）
-BAIDU_MAP_API_KEY=your_actual_api_key_here
+# 百度地图API配置
+BAIDU_MAP_API_KEY=your_baidu_map_api_key_here
 ```
 
-### 3. 启动MongoDB
-
-确保MongoDB服务已启动：
+### 3. 使用Docker部署（推荐）
 
 ```bash
-# Linux/Mac
-sudo systemctl start mongod
-# 或使用 Docker
-docker run -d -p 27017:27017 --name mongodb mongo:latest
+# 构建并启动服务
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 停止服务
+docker-compose down
 ```
 
-### 4. 启动应用
+服务将在 `http://localhost:18000` 启动
+
+### 4. 本地开发部署
 
 ```bash
-# 生产模式
+# 安装依赖
+npm install
+
+# 启动服务
 npm start
 
-# 开发模式（自动重启）
+# 开发模式（热重载）
 npm run dev
 ```
 
-### 5. 访问应用
+服务将在 `http://localhost:3000` 启动
 
-打开浏览器访问：`http://localhost:3000`
+## 📖 使用指南
 
-## Excel文件格式
+### Excel文件格式
 
-Excel文件需包含以下列（列名可自定义，但必须包含地址信息）：
+Excel文件需包含以下列（表头名称必须匹配）：
 
-| 列名 | 说明 | 必填 |
-|------|------|------|
-| name | 酒店/地点名称 | 否 |
-| address | 详细地址 | **是** |
-| type | 房型/类型 | 否 |
-| contact | 联系人 | 否 |
-| phone | 联系电话 | 否 |
+| 列名 | 说明 | 必填 | 示例 |
+|------|------|------|------|
+| name | 名称 | 否 | 杭州西湖国宾馆 |
+| address | 地址 | 是 | 杭州市西湖区杨公堤18号 |
+| type | 类型 | 否 | 豪华湖景大床房 |
+| lng | 经度 | 否 | 120.130953 |
+| lat | 纬度 | 否 | 30.246273 |
 
-**示例数据：**
+**示例Excel数据：**
 
 ```
-name,address,type,contact,phone
-杭州西湖宾馆,浙江省杭州市西湖区北山街37号,豪华双床房,张三,13800138000
-杭州黄龙饭店,浙江省杭州市西湖区曙光路120号,标准大床房,李四,13900139000
+| name         | address              | type       | lng        | lat       |
+|--------------|----------------------|------------|------------|----------|
+| 西湖国宾馆    | 杭州市西湖区杨公堤18号 | 酒店       | 120.130953 | 30.246273 |
+| 香格里拉饭店  | 杭州市西湖区北山路78号 | 酒店       | 120.147835 | 30.261654 |
 ```
 
-## 使用说明
+### 操作步骤
 
-1. **上传Excel文件**
-   - 点击右侧「上传Excel文件」按钮
-   - 选择符合格式的Excel文件
-   - 系统自动解析并在地图上标注
+1. **上传Excel文件**：点击"上传文件"按钮，选择包含地址数据的Excel文件
+2. **自动解析**：系统自动解析Excel并提取地址信息
+3. **地理编码**：系统调用百度地图API将地址转换为坐标（如果Excel中未提供坐标）
+4. **地图展示**：所有地址自动显示在地图上，可点击查看详情
+5. **数据持久化**：地址数据自动保存到SQLite数据库
 
-2. **查看地址列表**
-   - 右侧面板显示所有地址
-   - 点击地址卡片可定位到地图
-   - 支持分页浏览
-
-3. **地图交互**
-   - 点击标记点查看详细信息
-   - 拖拽和缩放地图
-   - 自动调整视野以显示所有标记点
-
-4. **隐藏/显示列表**
-   - 点击抽屉切换按钮控制列表显示
-   - 移动端自动适配
-
-## 项目结构
+## 🗂️ 项目结构
 
 ```
 .
-├── server.js              # Express服务器入口
+├── server.js              # Express服务器主文件
 ├── config.js              # 配置文件
-├── package.json           # 依赖配置
-├── .env.example           # 环境变量模板
 ├── models/
-│   └── address.js         # MongoDB数据模型
+│   └── db.js             # SQLite数据库模型
 ├── utils/
-│   └── logger.js          # 日志工具
+│   └── logger.js         # 日志工具
 ├── public/
-│   ├── index.html         # 前端页面
-│   ├── css/               # 样式文件
+│   ├── index.html        # 前端页面
+│   ├── css/
+│   │   └── style.css     # 样式文件
 │   └── js/
-│       └── main.js        # 前端逻辑
-├── uploads/               # 临时文件目录
-└── logs/                  # 日志目录
+│       └── main.js       # 前端逻辑
+├── uploads/              # 文件上传目录
+├── data/                 # SQLite数据库文件目录
+├── logs/                 # 日志文件目录
+├── docker-compose.yml    # Docker Compose配置
+├── Dockerfile            # Docker镜像配置
+├── .dockerignore        # Docker忽略文件
+├── .gitignore           # Git忽略文件
+├── .env.example         # 环境变量示例
+└── package.json         # NPM依赖配置
 ```
 
-## API接口
+## 🔧 API接口
 
 ### 上传Excel文件
 
@@ -149,44 +153,60 @@ name,address,type,contact,phone
 POST /upload
 Content-Type: multipart/form-data
 
-file: [Excel文件]
+file: Excel文件
 ```
 
 **响应：**
+
 ```json
 {
   "success": true,
   "data": [
     {
-      "name": "酒店名称",
-      "address": "详细地址",
-      "type": "房型"
+      "name": "西湖国宾馆",
+      "address": "杭州市西湖区杨公堤18号",
+      "type": "酒店",
+      "lng": 120.130953,
+      "lat": 30.246273
     }
   ]
 }
 ```
 
-### 获取地址列表
+### 获取所有地址
 
 ```http
 GET /addresses
 ```
 
 **响应：**
+
 ```json
 {
   "success": true,
-  "data": [/* 地址数组 */]
+  "data": [
+    {
+      "id": 1,
+      "name": "西湖国宾馆",
+      "address": "杭州市西湖区杨公堤18号",
+      "type": "酒店",
+      "lng": 120.130953,
+      "lat": 30.246273,
+      "created_at": "2024-01-09T10:30:00.000Z",
+      "updated_at": "2024-01-09T10:30:00.000Z"
+    }
+  ]
 }
 ```
 
-### 获取地图API密钥
+### 获取百度地图API密钥
 
 ```http
 GET /api/map-key
 ```
 
 **响应：**
+
 ```json
 {
   "success": true,
@@ -200,110 +220,134 @@ GET /api/map-key
 GET /health
 ```
 
-## Docker部署
+**响应：**
 
-### 使用Docker Compose（推荐）
-
-```bash
-# 启动服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
+```json
+{
+  "status": "ok",
+  "database": "sqlite",
+  "records": 10
+}
 ```
 
-### 手动构建
+## 🐳 Docker部署详解
+
+### 构建镜像
 
 ```bash
-# 构建镜像
-docker build -t map-annotation-system .
+docker build -t map-annotation .
+```
 
-# 运行容器
-docker run -d -p 3000:3000 \
-  -e MONGODB_URI=mongodb://host.docker.internal:27017/map_annotation \
+### 运行容器
+
+```bash
+docker run -d \
+  -p 18000:3000 \
   -e BAIDU_MAP_API_KEY=your_api_key \
-  map-annotation-system
+  -v $(pwd)/uploads:/app/uploads \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/logs:/app/logs \
+  --name map-annotation \
+  map-annotation
 ```
 
-## 常见问题
+### 数据持久化
 
-### 1. MongoDB连接失败
+Docker volumes挂载以下目录实现数据持久化：
 
-**问题**: `MongoDB 连接失败`
+- `./uploads` - 上传的Excel文件
+- `./data` - SQLite数据库文件
+- `./logs` - 应用日志
 
-**解决**:
-- 确认MongoDB服务已启动
-- 检查`.env`中的`MONGODB_URI`配置
-- 查看日志文件：`logs/error.log`
+## 📊 数据库
 
-### 2. 地图无法显示
+### SQLite数据库结构
 
-**问题**: 地图区域空白
+**addresses表：**
 
-**解决**:
-- 检查百度地图API密钥是否正确
-- 确认API密钥的配额未超限
-- 打开浏览器控制台查看错误信息
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键（自增） |
+| name | TEXT | 名称 |
+| address | TEXT | 地址（必填） |
+| type | TEXT | 类型 |
+| lng | REAL | 经度 |
+| lat | REAL | 纬度 |
+| created_at | DATETIME | 创建时间 |
+| updated_at | DATETIME | 更新时间 |
 
-### 3. 地址无法标注
+**索引：**
+- `idx_address` - 地址索引
+- `idx_created_at` - 创建时间索引
 
-**问题**: 上传Excel后地图上没有标记
+## 🔐 安全性
 
-**解决**:
-- 确认Excel中的地址列名为`address`
-- 检查地址格式是否完整（需包含省市区）
-- 查看浏览器控制台的地理编码错误
+- 文件上传大小限制
+- 输入数据验证
+- API密钥环境变量隔离
+- Docker容器隔离运行
 
-### 4. Excel解析失败
+## 🛠️ 故障排查
 
-**问题**: `文件处理失败`
+### 地图无法显示
 
-**解决**:
-- 确认文件格式为`.xlsx`或`.xls`
-- 检查Excel文件是否包含`address`列
-- 文件大小不要超过10MB
+1. 检查百度地图API密钥是否正确
+2. 确认API密钥的服务权限包含"JavaScript API"
+3. 检查浏览器控制台错误信息
 
-## 开发指南
+### 地址无法标注
 
-### 添加新字段
+1. 确认地址格式正确（包含省市区详细信息）
+2. 检查网络连接是否正常
+3. 查看服务器日志：`docker-compose logs -f`
 
-1. 修改 `models/address.js` 添加字段定义
-2. 更新前端 `main.js` 的显示逻辑
-3. 调整 `public/index.html` 的UI展示
+### 数据库问题
 
-### 自定义地图样式
+1. 确认data目录存在且有写权限
+2. 检查数据库文件：`ls -la data/`
+3. 查看SQLite数据库：`sqlite3 data/map_annotation.db "SELECT * FROM addresses"`
 
-编辑 `public/css/map-styles.css` 文件。
+## 📝 开发说明
 
-### 修改日志配置
+### 依赖管理
 
-编辑 `utils/logger.js` 调整日志级别和输出路径。
+```bash
+# 安装依赖
+npm install
 
-## 性能优化
+# 更新依赖
+npm update
 
-- 批量导入：默认每批100条数据
-- 请求队列：限制地理编码QPS为30
-- 连接池：MongoDB连接池大小50
-- 日志轮转：单个日志文件最大5MB
+# 审计安全问题
+npm audit fix
+```
 
-## 安全建议
+### 日志级别
 
-- ⚠️ **不要**将`.env`文件提交到Git仓库
-- ⚠️ 定期更换百度地图API密钥
-- ⚠️ 生产环境使用环境变量而非配置文件
-- ⚠️ 启用MongoDB认证机制
+支持的日志级别：`error`, `warn`, `info`, `debug`
 
-## 许可证
+在 `.env` 文件中配置：
 
-MIT License
+```env
+LOG_LEVEL=info
+```
 
-## 贡献
+## 🤝 贡献指南
 
 欢迎提交Issue和Pull Request！
 
-## 联系方式
+## 📄 许可证
 
-如有问题，请提交Issue或联系开发团队。
+MIT License
+
+## 🔗 相关链接
+
+- [百度地图开放平台](https://lbsyun.baidu.com/)
+- [百度地图JavaScript API文档](https://lbsyun.baidu.com/cms/jsapi/reference/jsapi_reference_3_0.html)
+- [Express框架](https://expressjs.com/)
+- [SQLite](https://www.sqlite.org/)
+- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)
+
+## 📧 联系方式
+
+如有问题或建议，欢迎通过GitHub Issues联系。

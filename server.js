@@ -5,73 +5,12 @@ const xlsx = require('xlsx');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-const mongoose = require('mongoose');
-const Address = require('./models/address');
+const db = require('./models/db');
 const config = require('./config');
 const logger = require('./utils/logger');
 
-// 连接到 MongoDB
-let isConnected = false;
-let connectionRetries = 0;
-const MAX_RETRIES = 10;
-const INITIAL_RETRY_DELAY = 5000;
-const MAX_RETRY_DELAY = 60000;
-
-const connectWithRetry = () => {
-    // 使用指数退避策略计算重试延迟
-    const retryDelay = Math.min(INITIAL_RETRY_DELAY * Math.pow(2, connectionRetries), MAX_RETRY_DELAY);
-
-    mongoose.connect(config.mongodb.uri, config.mongodb.options)
-        .then(() => {
-            logger.info('MongoDB 连接成功');
-            isConnected = true;
-            connectionRetries = 0;
-            // 数据库连接成功后，自动加载数据
-            loadInitialData();
-        })
-        .catch(err => {
-            logger.error('MongoDB 连接失败:', err);
-            isConnected = false;
-            connectionRetries++;
-
-            if (connectionRetries < MAX_RETRIES) {
-                logger.info(`${retryDelay/1000}秒后进行第${connectionRetries}次重试...`);
-                setTimeout(connectWithRetry, retryDelay);
-            } else {
-                logger.error('达到最大重试次数，请检查MongoDB服务是否正常运行');
-                process.exit(1);
-            }
-        });
-};
-
-// 添加自动加载数据的函数
-async function loadInitialData() {
-    try {
-        const addresses = await Address.find().sort({ createdAt: -1 });
-        if (addresses.length > 0) {
-            logger.info('数据库中已有数据，无需初始化');
-        } else {
-            logger.info('数据库为空，等待数据上传...');
-        }
-    } catch (error) {
-        logger.error('初始化数据加载失败:', error);
-    }
-}
-
-connectWithRetry();
-
-// 监听MongoDB连接状态
-mongoose.connection.on('disconnected', () => {
-    logger.warn('MongoDB连接断开，尝试重新连接...');
-    isConnected = false;
-    connectWithRetry();
-});
-
-mongoose.connection.on('error', (err) => {
-    logger.error('MongoDB连接错误:', err);
-    isConnected = false;
-});
-
+// 初始化数据库
+logger.info('SQLite数据库初始化完成');
 
 const app = express();
 const port = config.server.port;
@@ -91,12 +30,12 @@ app.get('/api/map-key', (req, res) => {
 
 // 配置文件上传
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
 });
 
 const upload = multer({ storage: storage });
@@ -104,18 +43,14 @@ const upload = multer({ storage: storage });
 // 创建uploads目录
 const fs = require('fs');
 if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
+    fs.mkdirSync('uploads');
 }
 
 // 获取所有已存储的地址
-app.get('/addresses', async (req, res) => {
-    if (!isConnected) {
-        logger.warn('尝试获取地址数据时MongoDB连接不可用');
-        return res.status(503).json({ success: false, error: 'MongoDB连接不可用' });
-    }
+app.get('/addresses', (req, res) => {
     try {
         logger.info('正在获取地址数据...');
-        const addresses = await Address.find().sort({ createdAt: -1 });
+        const addresses = db.findAll();
         logger.info(`成功获取${addresses.length}条地址数据`);
         res.json({
             success: true,
@@ -129,18 +64,24 @@ app.get('/addresses', async (req, res) => {
 
 // 健康检查端点
 app.get('/health', (req, res) => {
-    if (isConnected) {
-        res.status(200).json({ status: 'ok', mongodb: 'connected' });
-    } else {
-        res.status(503).json({ status: 'error', mongodb: 'disconnected' });
+    try {
+        const count = db.count();
+        res.status(200).json({ 
+            status: 'ok', 
+            database: 'sqlite', 
+            records: count 
+        });
+    } catch (error) {
+        res.status(503).json({ 
+            status: 'error', 
+            database: 'sqlite', 
+            error: error.message 
+        });
     }
 });
 
 // 处理Excel文件上传
 app.post('/upload', upload.single('file'), async (req, res) => {
-    if (!isConnected) {
-        return res.status(503).json({ error: 'MongoDB连接不可用' });
-    }
     try {
         if (!req.file) {
             return res.status(400).json({ error: '没有上传文件' });
@@ -155,49 +96,64 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         fs.unlinkSync(req.file.path);
 
         // 验证数据格式
-        const validData = data.filter(item => item.address);
+        const validData = data.filter(item => item.address).map(item => ({
+            name: item.name || '',
+            address: item.address,
+            type: item.type || '',
+            lng: item.lng || null,
+            lat: item.lat || null
+        }));
 
         // 清除旧数据
-        await Address.deleteMany({});
-        logger.info('已清除旧数据');
+        const deletedCount = db.deleteAll();
+        logger.info(`已清除${deletedCount}条旧数据`);
 
-        // 直接返回数据
+        // 直接返回数据给前端
         res.json({
             success: true,
             data: validData
         });
 
         // 批量导入数据到数据库
-        const batchSize = config.server.batchSize;
-        for (let i = 0; i < validData.length; i += batchSize) {
-            const batch = validData.slice(i, i + batchSize);
-            try {
-                await Address.insertMany(batch, { ordered: false });
-                logger.info(`成功导入第${i/batchSize + 1}批数据`);
-            } catch (dbError) {
-                logger.error(`第${i/batchSize + 1}批数据导入失败:`, dbError);
-            }
+        try {
+            const insertedCount = db.insertMany(validData);
+            logger.info(`成功导入${insertedCount}条数据到SQLite数据库`);
+        } catch (dbError) {
+            logger.error('数据导入失败:', dbError);
         }
 
     } catch (error) {
         logger.error('文件处理错误:', error);
-        res.status(500).json({ error: '文件处理失败' });
+        res.status(500).json({ error: '文件处理失败: ' + error.message });
     }
 });
 
 // 启动服务器
 app.listen(port, () => {
-  logger.info(`服务器运行在 http://localhost:${port}`);
+    logger.info(`服务器运行在 http://localhost:${port}`);
+    logger.info(`数据库类型: SQLite`);
+    logger.info(`当前记录数: ${db.count()}`);
 });
 
 // 优雅关闭
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
     logger.info('收到 SIGTERM 信号，准备关闭服务...');
     try {
-        await mongoose.connection.close();
-        logger.info('MongoDB连接已关闭');
+        db.close();
+        logger.info('SQLite数据库连接已关闭');
     } catch (error) {
-        logger.error('关闭MongoDB连接失败:', error);
+        logger.error('关闭SQLite数据库连接失败:', error);
+    }
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    logger.info('收到 SIGINT 信号，准备关闭服务...');
+    try {
+        db.close();
+        logger.info('SQLite数据库连接已关闭');
+    } catch (error) {
+        logger.error('关闭SQLite数据库连接失败:', error);
     }
     process.exit(0);
 });
