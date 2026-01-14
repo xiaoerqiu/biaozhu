@@ -62,6 +62,54 @@ app.get('/addresses', (req, res) => {
     }
 });
 
+// 更新单个地址
+app.put('/addresses/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { name, address, type, lng, lat } = req.body;
+        
+        if (!address) {
+            return res.status(400).json({ success: false, error: '地址不能为空' });
+        }
+        
+        const updated = db.updateAddress(id, {
+            name: name || '',
+            address,
+            type: type || '',
+            lng: lng || null,
+            lat: lat || null
+        });
+        
+        if (updated) {
+            logger.info(`地址更新成功: ID=${id}`);
+            res.json({ success: true, data: updated });
+        } else {
+            res.status(404).json({ success: false, error: '地址不存在' });
+        }
+    } catch (error) {
+        logger.error('更新地址失败:', error);
+        res.status(500).json({ success: false, error: '更新失败: ' + error.message });
+    }
+});
+
+// 删除单个地址
+app.delete('/addresses/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const deleted = db.deleteAddress(id);
+        
+        if (deleted) {
+            logger.info(`地址删除成功: ID=${id}`);
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ success: false, error: '地址不存在' });
+        }
+    } catch (error) {
+        logger.error('删除地址失败:', error);
+        res.status(500).json({ success: false, error: '删除失败: ' + error.message });
+    }
+});
+
 // 健康检查端点
 app.get('/health', (req, res) => {
     try {

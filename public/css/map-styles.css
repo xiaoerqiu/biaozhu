@@ -317,4 +317,239 @@
     font-size: 16px;
     color: #1677ff;
     z-index: 100;
+}
+
+/* 定位按钮 */
+.ma-location-btn {
+    position: absolute;
+    bottom: 100px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.2s;
+}
+
+.ma-location-btn:hover {
+    background: #f0f5ff;
+    box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3);
+}
+
+/* 右键菜单 */
+.ma-context-menu {
+    position: fixed;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 120px;
+    z-index: 2000;
+    animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.ma-menu-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #333;
+    transition: background 0.2s;
+}
+
+.ma-menu-item:hover {
+    background: #f5f5f5;
+}
+
+.ma-menu-item span {
+    font-size: 16px;
+}
+
+.ma-menu-danger {
+    color: #ff4d4f;
+}
+
+.ma-menu-danger:hover {
+    background: #fff2f0;
+}
+
+/* 弹窗遮罩 */
+.ma-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    animation: fadeIn 0.2s ease;
+}
+
+/* 弹窗 */
+.ma-modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 420px;
+    max-width: 90vw;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.25s ease;
+}
+
+.ma-modal-sm {
+    width: 360px;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ma-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ma-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.ma-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.ma-modal-close:hover {
+    color: #333;
+}
+
+.ma-modal-body {
+    padding: 20px;
+}
+
+.ma-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* 表单 */
+.ma-form-group {
+    margin-bottom: 16px;
+}
+
+.ma-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.ma-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+}
+
+.ma-form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.ma-form-group input:focus {
+    outline: none;
+    border-color: #1677ff;
+    box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
+}
+
+/* 按钮 */
+.ma-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.ma-btn-default {
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    color: #333;
+}
+
+.ma-btn-default:hover {
+    border-color: #1677ff;
+    color: #1677ff;
+}
+
+.ma-btn-primary {
+    background: #1677ff;
+    color: #fff;
+}
+
+.ma-btn-primary:hover {
+    background: #4096ff;
+}
+
+.ma-btn-danger {
+    background: #ff4d4f;
+    color: #fff;
+}
+
+.ma-btn-danger:hover {
+    background: #ff7875;
+}
+
+/* 删除确认 */
+.ma-delete-warning {
+    font-size: 16px;
+    color: #333;
+    margin: 0 0 12px 0;
+    text-align: center;
+}
+
+.ma-delete-info {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+    text-align: center;
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 6px;
+    word-break: break-all;
 } 
