@@ -1,165 +1,225 @@
-# Docker部署问题排查指南
+# 故障排查指南
 
-## 常见问题：网页报错 "Failed to load resource: the server responded with a status of 500"
+本文档提供了部署和运行地图标绘系统时常见问题的解决方案。
 
-### 问题描述
+## 问题1：应用无法启动
 
-部署后，浏览器控制台显示错误信息：`Failed to load resource: the server responded with a status of 500`，通常是在访问`/addresses`接口时出现。这表明服务器端发生了内部错误，无法正常返回地址数据。
+### 症状
+
+应用容器一直处于重启状态，或者启动后立即退出。
 
 ### 可能原因
 
-1. **MongoDB连接问题**：应用无法连接到MongoDB数据库服务
-2. **数据库服务未完全启动**：应用启动时，MongoDB服务可能尚未准备好接受连接
-3. **网络配置问题**：Docker容器间网络通信受阻
-4. **数据库认证失败**：如果MongoDB配置了认证，但连接字符串中的凭据不正确
+1. **数据库文件访问问题**：无法创建或访问SQLite数据库文件
+2. **端口占用**：8080端口已被其他服务占用
+3. **环境变量配置错误**：缺少必要的环境变量
+4. **存储卷配置问题**：数据目录权限不足或未正确挂载
 
 ### 解决方案
 
-#### 1. 检查MongoDB服务状态
+#### 1. 检查服务状态
 
 ```bash
 docker-compose ps
 ```
 
-确保mongodb服务状态为`Up`。如果不是，可以尝试重启服务：
+确保web服务状态为`Up`。如果不是，可以尝试重启服务：
 
 ```bash
-docker-compose restart mongodb
+docker-compose restart web
 ```
 
-#### 2. 检查MongoDB连接日志
+#### 2. 检查应用日志
 
 ```bash
-docker-compose logs mongodb
+docker-compose logs -f web
 ```
 
-查看是否有错误信息或异常。
+查找与数据库连接、端口绑定相关的错误信息。
 
-#### 3. 检查应用服务日志
+#### 3. 检查数据库文件
+
+确保数据目录存在且有正确的权限：
 
 ```bash
-docker-compose logs web
+# 检查数据目录
+ls -la ./data
+
+# 如果目录不存在，创建它
+mkdir -p ./data
+
+# 设置权限
+chmod 755 ./data
 ```
 
-查找与MongoDB连接相关的错误信息。
+#### 4. 验证环境变量
 
-#### 4. 运行MongoDB连接测试
+在`docker-compose.yml`或部署平台中确认以下环境变量：
 
-我们提供了测试脚本来诊断MongoDB连接问题：
+```yaml
+environment:
+  - PORT=8080
+  - BAIDU_MAP_API_KEY=your_api_key_here
+  - DB_PATH=./data/map_annotation.db
+```
+
+#### 5. 检查端口占用
 
 ```bash
-docker-compose exec web node scripts/check-mongodb.js
+# 检查8080端口是否被占用
+lsof -i :8080
+# 或
+netstat -tuln | grep 8080
 ```
 
-这将提供基本的连接诊断信息。
+如果端口被占用，可以修改`docker-compose.yml`中的端口映射：
 
-#### 4.1 运行高级诊断脚本
-
-如果基本连接测试无法解决问题，请使用我们的高级诊断脚本：
-
-```bash
-docker-compose exec web node scripts/diagnose-mongodb.js
+```yaml
+services:
+  web:
+    ports:
+      - "18080:8080"  # 主机端口:容器端口
 ```
 
-这个脚本会提供更详细的网络诊断信息，包括：
-- DNS解析测试
-- TCP连接测试
-- Docker网络配置检查
-- 具体的解决方案建议
+## 问题2：数据丢失或无法持久化
 
-#### 5. 修改MongoDB连接URI
+### 症状
 
-如果您使用的是外部MongoDB服务或不同的服务名称，需要相应地修改连接URI：
+重启容器后，之前标注的数据消失了。
+
+### 解决方案
+
+#### 1. 确保数据卷正确配置
 
 在`docker-compose.yml`中：
 
 ```yaml
 services:
   web:
-    environment:
-      - MONGODB_URI=mongodb://your-mongodb-host:27017/map_annotation
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
 ```
 
-**重要提示**：如果遇到持续的连接问题，尝试使用Docker默认网桥IP地址替代服务名：
+#### 2. 在云平台上配置存储卷
 
-```yaml
-services:
-  web:
-    environment:
-      - MONGODB_URI=mongodb://172.17.0.1:27017/map_annotation
-```
+如果使用Zeabur等云平台部署：
 
-这可以解决Docker容器间DNS解析问题。
+- **挂载路径**: `/app/data`
+- **用途**: SQLite数据库文件持久化
 
-#### 6. 确保容器启动顺序正确
-
-在`docker-compose.yml`中，我们已经配置了依赖关系和健康检查，确保web服务在MongoDB准备好后才启动：
-
-```yaml
-depends_on:
-  mongodb:
-    condition: service_healthy
-```
-
-如果您修改了这些配置，请确保恢复它们。
-
-#### 7. 重建并重启所有服务
-
-有时候，完全重建容器可以解决问题：
+#### 3. 检查数据库文件
 
 ```bash
-docker-compose down
-docker-compose build
-docker-compose up -d
+# 检查数据库文件是否存在
+ls -lh ./data/map_annotation.db
+
+# 检查数据库完整性
+sqlite3 ./data/map_annotation.db "PRAGMA integrity_check;"
 ```
 
-## 其他常见问题
+## 问题3：百度地图无法加载
 
-### 上传Excel文件失败
+### 症状
 
-#### 可能原因
+页面加载正常，但地图区域空白或显示错误。
 
-1. 文件格式不正确
-2. 文件太大
-3. `uploads`目录权限问题
+### 解决方案
 
-#### 解决方案
+#### 1. 验证API密钥
 
-1. 确保Excel文件格式正确，包含必要的列（如`address`列）
-2. 检查`uploads`目录是否存在且有正确的权限：
+确保`BAIDU_MAP_API_KEY`环境变量设置正确：
 
 ```bash
-docker-compose exec web ls -la /app/uploads
+# 查看当前配置
+docker-compose exec web printenv | grep BAIDU
 ```
 
-### 地图无法显示
+#### 2. 检查API密钥权限
 
-#### 可能原因
+登录百度地图开放平台，确认：
+- API密钥状态为"启用"
+- IP白名单配置正确（建议设置为`0.0.0.0/0`用于测试）
+- 配额未超限
 
-1. 百度地图API密钥无效或未正确配置
-2. 网络连接问题
-
-#### 解决方案
-
-1. 检查百度地图API密钥配置：
+#### 3. 检查网络连接
 
 ```bash
-docker-compose exec web cat config.js | grep apiKey
+# 测试是否能访问百度地图API
+curl -I https://api.map.baidu.com
 ```
 
-2. 在`docker-compose.yml`中设置正确的API密钥：
+## 问题4：Excel文件上传失败
+
+### 症状
+
+上传Excel文件时报错或上传后无数据。
+
+### 解决方案
+
+#### 1. 检查文件格式
+
+Excel文件应包含以下列：
+- 地址（必需）
+- 名称（可选）
+- 描述（可选）
+
+#### 2. 检查上传目录权限
+
+```bash
+# 确保uploads目录存在且可写
+mkdir -p ./uploads
+chmod 755 ./uploads
+```
+
+#### 3. 检查文件大小限制
+
+默认限制为10MB，如需修改，在`server.js`中调整：
+
+```javascript
+const upload = multer({ 
+    dest: './uploads/',
+    limits: { fileSize: 20 * 1024 * 1024 } // 20MB
+});
+```
+
+## 问题5：健康检查失败
+
+### 症状
+
+Docker健康检查一直显示`unhealthy`状态。
+
+### 解决方案
+
+#### 1. 手动运行健康检查脚本
+
+```bash
+docker-compose exec web node scripts/healthcheck.js
+```
+
+查看详细的错误信息。
+
+#### 2. 调整健康检查配置
+
+在`docker-compose.yml`中适当延长超时时间：
 
 ```yaml
-services:
-  web:
-    environment:
-      - BAIDU_MAP_API_KEY=your_api_key_here
+healthcheck:
+  test: ["CMD", "node", "scripts/healthcheck.js"]
+  interval: 30s
+  timeout: 10s
+  start_period: 40s  # 增加启动等待时间
+  retries: 3
 ```
 
-## 如何获取更多帮助
+## 获取更多帮助
 
-如果上述解决方案无法解决您的问题，请提供以下信息寻求帮助：
+如果以上方案无法解决您的问题，请：
 
-1. 完整的错误日志：`docker-compose logs > logs.txt`
-2. 系统环境信息：Docker版本、操作系统等
-3. 您对`docker-compose.yml`和`Dockerfile`的任何修改
+1. 收集完整的日志信息：`docker-compose logs > logs.txt`
+2. 记录问题的详细描述和复现步骤
+3. 检查GitHub Issues或提交新Issue
+
+---
+
+**提示**: 大多数问题可以通过查看应用日志找到原因。使用`docker-compose logs -f web`实时查看日志是排查问题的最佳起点。
