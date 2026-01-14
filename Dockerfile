@@ -25,7 +25,7 @@ VOLUME ["/app/data", "/app/uploads", "/app/logs"]
 RUN apk del make g++ && rm -rf /var/cache/apk/*
 
 # 暴露端口
-EXPOSE 3000
+EXPOSE 8080
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \

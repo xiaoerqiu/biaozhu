@@ -1,6 +1,6 @@
 const config = {
     server: {
-        port: process.env.PORT || 3000,
+        port: process.env.PORT || 8080,
         // 日志配置
         logLevel: process.env.LOG_LEVEL || 'info',
         logFile: process.env.LOG_FILE || './logs/app.log'

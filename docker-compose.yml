@@ -4,10 +4,10 @@ services:
   web:
     build: .
     ports:
-      - "18000:3000"
+      - "18000:8080"
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=8080
     restart: always
     healthcheck:
       test: ["CMD", "node", "scripts/healthcheck.js"]
