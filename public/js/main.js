@@ -88,11 +88,27 @@ function renderAddressList() {
     document.getElementById('next-page').disabled = currentPage === Math.ceil(addresses.length / itemsPerPage);
 }
 
+let uploadStatusTimer = null;
+
 function showUploadStatus(message, type) {
     const status = document.getElementById('upload-status');
     status.textContent = message;
     status.style.display = message ? 'block' : 'none';
-    status.style.color = type === 'error' ? '#ff4d4f' : '#1677ff';
+    status.style.color = type === 'error' ? '#ff4d4f' : '#52c41a'; // 成功用绿色
+    
+    // 清除之前的定时器
+    if (uploadStatusTimer) {
+        clearTimeout(uploadStatusTimer);
+        uploadStatusTimer = null;
+    }
+    
+    // 成功消息3秒后自动隐藏
+    if (message && type !== 'error') {
+        uploadStatusTimer = setTimeout(() => {
+            status.style.display = 'none';
+            uploadStatusTimer = null;
+        }, 3000);
+    }
 }
 
 function markAddressesOnMap(addresses) {
