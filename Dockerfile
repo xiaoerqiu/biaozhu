@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ COPY . .
 RUN mkdir -p /app/uploads /app/data /app/logs && \
     chmod -R 755 /app/uploads /app/data /app/logs
 
-# 声明需要持久化的卷（重要：云平台会识别这些目录）
+# 声明需要持久化的卷（云平台会识别这些目录）
 VOLUME ["/app/data", "/app/uploads", "/app/logs"]
 
 # 清理构建工具减小镜像体积
