@@ -177,10 +177,144 @@
     position: fixed;
     top: 20px;
     right: 20px;
-    padding: 10px 20px;
-    border-radius: 4px;
+    padding: 12px 20px;
+    border-radius: 8px;
     background: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     z-index: 1001;
     display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideIn 0.3s ease;
+}
+
+.ma-status-loading {
+    color: #1677ff;
+    border-left: 4px solid #1677ff;
+}
+
+.ma-status-success {
+    color: #52c41a;
+    border-left: 4px solid #52c41a;
+}
+
+.ma-status-error {
+    color: #ff4d4f;
+    border-left: 4px solid #ff4d4f;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 加载动画 */
+.ma-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #1677ff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 空状态样式 */
+.ma-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 20px;
+    color: #999;
+}
+
+.ma-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.ma-empty-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.ma-empty-desc {
+    font-size: 14px;
+    color: #999;
+}
+
+/* 地址卡片选中状态 */
+.ma-address-card {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.ma-card-selected {
+    background-color: #e6f4ff !important;
+    border-left: 3px solid #1677ff;
+}
+
+.ma-card-selected .ma-card-title {
+    color: #1677ff;
+}
+
+/* 卡片头部（序号和标签） */
+.ma-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.ma-card-index {
+    background: #1677ff;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.ma-type-tag {
+    background: #f0f5ff;
+    color: #1677ff;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #adc6ff;
+}
+
+/* 地图加载提示 */
+.ma-map-loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 16px;
+    color: #1677ff;
+    z-index: 100;
 } 

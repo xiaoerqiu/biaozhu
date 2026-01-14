@@ -1,6 +1,7 @@
 // 初始化地图
 let map = null;
 let markers = [];
+let selectedCardIndex = -1; // 当前选中的卡片索引
 
 // 请求队列管理器
 class RequestQueue {
@@ -62,18 +63,60 @@ let itemsPerPage = 10;
 let totalItems = 0;
 let addresses = [];
 
-// 适配新版结构
+// 渲染空状态提示
+function renderEmptyState() {
+    return `
+        <div class="ma-empty-state">
+            <div class="ma-empty-icon">📍</div>
+            <div class="ma-empty-title">暂无地址数据</div>
+            <div class="ma-empty-desc">请点击上方按钮上传Excel文件</div>
+        </div>
+    `;
+}
+
+// 渲染地址列表
 function renderAddressList() {
     const addressList = document.getElementById('address-list');
     addressList.innerHTML = '';
+    
+    // 空状态处理
+    if (addresses.length === 0) {
+        addressList.innerHTML = renderEmptyState();
+        document.getElementById('current-page').textContent = '0';
+        document.getElementById('total-pages').textContent = '0';
+        document.getElementById('prev-page').disabled = true;
+        document.getElementById('next-page').disabled = true;
+        return;
+    }
+    
     const start = (currentPage - 1) * itemsPerPage;
     const end = Math.min(start + itemsPerPage, addresses.length);
+    
     for (let i = start; i < end; i++) {
         const item = addresses[i];
         const li = document.createElement('li');
-        li.className = 'ma-address-card';
-        li.innerHTML = `<div class="ma-card-title">${item.name || ''}</div><div class="ma-card-desc">${item.address || ''}</div>`;
+        const isSelected = i === selectedCardIndex;
+        li.className = `ma-address-card ${isSelected ? 'ma-card-selected' : ''}`;
+        li.dataset.index = i;
+        
+        // 添加序号和类型标签
+        const typeTag = item.type ? `<span class="ma-type-tag">${item.type}</span>` : '';
+        
+        li.innerHTML = `
+            <div class="ma-card-header">
+                <span class="ma-card-index">${i + 1}</span>
+                ${typeTag}
+            </div>
+            <div class="ma-card-title">${item.name || '未命名地点'}</div>
+            <div class="ma-card-desc">${item.address || '暂无地址'}</div>
+        `;
+        
         li.onclick = () => {
+            // 更新选中状态
+            selectedCardIndex = i;
+            updateSelectedCard();
+            
+            // 地图操作
             if (markers[i]) {
                 map.centerAndZoom(markers[i].getPosition(), 16);
                 markers[i].setAnimation(window.BMAP_ANIMATION_BOUNCE);
@@ -82,19 +125,37 @@ function renderAddressList() {
         };
         addressList.appendChild(li);
     }
+    
     document.getElementById('current-page').textContent = currentPage;
     document.getElementById('total-pages').textContent = Math.max(1, Math.ceil(addresses.length / itemsPerPage));
     document.getElementById('prev-page').disabled = currentPage === 1;
-    document.getElementById('next-page').disabled = currentPage === Math.ceil(addresses.length / itemsPerPage);
+    document.getElementById('next-page').disabled = currentPage >= Math.ceil(addresses.length / itemsPerPage);
+}
+
+// 更新选中卡片的样式
+function updateSelectedCard() {
+    document.querySelectorAll('.ma-address-card').forEach(card => {
+        const index = parseInt(card.dataset.index);
+        if (index === selectedCardIndex) {
+            card.classList.add('ma-card-selected');
+        } else {
+            card.classList.remove('ma-card-selected');
+        }
+    });
 }
 
 let uploadStatusTimer = null;
 
-function showUploadStatus(message, type) {
+// 显示上传状态（支持loading动画）
+function showUploadStatus(message, type, showSpinner = false) {
     const status = document.getElementById('upload-status');
-    status.textContent = message;
-    status.style.display = message ? 'block' : 'none';
-    status.style.color = type === 'error' ? '#ff4d4f' : '#52c41a'; // 成功用绿色
+    
+    const spinnerHtml = showSpinner ? '<span class="ma-spinner"></span>' : '';
+    const iconHtml = type === 'error' ? '❌ ' : (type === 'success' ? '✅ ' : '');
+    
+    status.innerHTML = `${spinnerHtml}${iconHtml}${message}`;
+    status.style.display = message ? 'flex' : 'none';
+    status.className = `ma-upload-status ma-status-${type}`;
     
     // 清除之前的定时器
     if (uploadStatusTimer) {
@@ -103,7 +164,7 @@ function showUploadStatus(message, type) {
     }
     
     // 成功消息3秒后自动隐藏
-    if (message && type !== 'error') {
+    if (message && type === 'success') {
         uploadStatusTimer = setTimeout(() => {
             status.style.display = 'none';
             uploadStatusTimer = null;
@@ -149,6 +210,9 @@ function markAddressesOnMap(addresses) {
                 enableMessage: false
             });
             marker.addEventListener('click', function() {
+                // 更新选中状态
+                selectedCardIndex = idx;
+                updateSelectedCard();
                 map.openInfoWindow(infoWindow, point);
             });
             map.addOverlay(marker);
@@ -196,9 +260,13 @@ function initDrawerToggle() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 显示地图加载提示
+    showMapLoading(true);
+    
     // 等待百度地图API加载完成后初始化地图
     window.onBaiduMapLoaded(() => {
         initMap();
+        showMapLoading(false);
         loadStoredAddresses();
     });
     
@@ -208,26 +276,39 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('upload-btn').onclick = () => {
         document.getElementById('excel-file').click();
     };
+    
     document.getElementById('excel-file').onchange = function() {
         const file = this.files[0];
         if (!file) return;
+        
+        // 重置文件输入，允许重复上传同一文件
+        const fileInput = this;
+        
         const formData = new FormData();
         formData.append('file', file);
-        showUploadStatus('正在上传并解析文件...', 'info');
+        
+        // 显示加载状态
+        showUploadStatus('正在上传并解析文件...', 'loading', true);
+        
         fetch('/upload', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(res => {
                 if (res.success) {
                     addresses = res.data;
                     currentPage = 1;
+                    selectedCardIndex = -1; // 重置选中状态
                     renderAddressList();
                     markAddressesOnMap(addresses);
-                    showUploadStatus('上传并解析成功', 'info');
+                    // 显示成功统计
+                    showUploadStatus(`上传成功！共导入 ${addresses.length} 条地址`, 'success');
                 } else {
-                    showUploadStatus(res.error || '上传失败', 'error');
+                    showUploadStatus(res.error || '上传失败，请检查文件格式', 'error');
                 }
             })
-            .catch(() => showUploadStatus('上传失败', 'error'));
+            .catch(() => showUploadStatus('上传失败，请检查网络连接', 'error'))
+            .finally(() => {
+                fileInput.value = ''; // 清空文件输入
+            });
     };
 
     // 分页
@@ -245,6 +326,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 });
 
+// 显示/隐藏地图加载提示
+function showMapLoading(show) {
+    let loader = document.getElementById('map-loader');
+    if (show) {
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'map-loader';
+            loader.className = 'ma-map-loader';
+            loader.innerHTML = '<span class="ma-spinner"></span><span>地图加载中...</span>';
+            document.getElementById('map-container').appendChild(loader);
+        }
+        loader.style.display = 'flex';
+    } else if (loader) {
+        loader.style.display = 'none';
+    }
+}
+
 function loadStoredAddresses() {
     fetch('/addresses').then(res => res.json()).then(res => {
         if (res.success) {
@@ -253,6 +351,9 @@ function loadStoredAddresses() {
             renderAddressList();
             markAddressesOnMap(addresses);
         }
+    }).catch(() => {
+        // 加载失败时显示空状态
+        renderAddressList();
     });
 }
 
@@ -266,5 +367,6 @@ function initMap() {
         map.addControl(new BMap.ScaleControl());
     } catch (error) {
         console.error('地图初始化失败:', error);
+        showUploadStatus('地图加载失败，请刷新页面重试', 'error');
     }
 }
