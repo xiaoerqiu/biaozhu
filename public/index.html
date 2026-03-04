@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +16,7 @@
         window.mapProvider = ''; // 'amap' 或 'baidu'
 
         // 注册地图加载完成回调
-        window.onMapLoaded = function(callback) {
+        window.onMapLoaded = function (callback) {
             if (window.mapLoaded) {
                 callback();
             } else {
@@ -24,7 +25,7 @@
         };
 
         // 地图加载完成触发
-        window._fireMapLoaded = function() {
+        window._fireMapLoaded = function () {
             window.mapLoaded = true;
             console.log(`${window.mapProvider === 'amap' ? '高德' : '百度'}地图API加载成功`);
             window.mapCallbacks.forEach(cb => cb());
@@ -37,23 +38,14 @@
             if (securityJsCode) {
                 window._AMapSecurityConfig = { securityJsCode: securityJsCode };
             }
+            // 高德2.0使用callback参数，SDK加载完成后自动调用
+            window._onAMapLoaded = function () {
+                window._fireMapLoaded();
+            };
             const script = document.createElement('script');
             script.type = 'text/javascript';
-            script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geocoder,AMap.Geolocation,AMap.CitySearch,AMap.ToolBar,AMap.Scale`;
-            script.onload = function() {
-                let checkCount = 0;
-                const check = setInterval(() => {
-                    checkCount++;
-                    if (window.AMap && window.AMap.Map) {
-                        clearInterval(check);
-                        window._fireMapLoaded();
-                    } else if (checkCount > 50) {
-                        clearInterval(check);
-                        console.error('高德地图API加载超时');
-                    }
-                }, 100);
-            };
-            script.onerror = function() {
+            script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geocoder,AMap.Geolocation,AMap.CitySearch,AMap.ToolBar,AMap.Scale&callback=_onAMapLoaded`;
+            script.onerror = function () {
                 console.error('高德地图API脚本加载失败');
             };
             document.head.appendChild(script);
@@ -62,14 +54,14 @@
         // 加载百度地图
         function loadBaiduMap(apiKey) {
             window.BMap_loadScriptTime = (new Date).getTime();
-            window.initBaiduMap = function() {
+            window.initBaiduMap = function () {
                 window.BMap = window.BMapGL;
                 window._fireMapLoaded();
             };
             const script = document.createElement('script');
             script.type = 'text/javascript';
             script.src = `https://api.map.baidu.com/getscript?type=webgl&v=1.0&ak=${apiKey}&services=&t=${Date.now()}`;
-            script.onload = function() {
+            script.onload = function () {
                 let checkCount = 0;
                 const checkBMap = setInterval(() => {
                     checkCount++;
@@ -82,14 +74,14 @@
                     }
                 }, 100);
             };
-            script.onerror = function() {
+            script.onerror = function () {
                 console.error('百度地图API脚本加载失败');
             };
             document.head.appendChild(script);
         }
 
         // 动态加载地图API
-        (function() {
+        (function () {
             fetch('/api/map-key')
                 .then(res => res.json())
                 .then(data => {
@@ -115,22 +107,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/antd/4.24.14/antd.min.js"></script>
 </head>
+
 <body>
     <div class="ma-app">
         <header class="ma-header">
             <span class="ma-title">地图标绘系统</span>
         </header>
         <main class="ma-main">
-            <section class="ma-map-area"><div id="map-container"></div></section>
+            <section class="ma-map-area">
+                <div id="map-container"></div>
+            </section>
             <section class="address-drawer" id="drawerList">
                 <button class="drawer-toggle-btn" id="drawerToggleBtn" title="隐藏/显示地址列表">
                     <svg viewBox="0 0 1024 1024" width="16" height="16" fill="currentColor">
-                        <path d="M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.8 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z"></path>
+                        <path
+                            d="M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.8 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z">
+                        </path>
                     </svg>
                 </button>
                 <button class="ma-upload-btn" id="upload-btn">
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 1024 1024" style="vertical-align:middle;margin-right:6px;">
-                        <path d="M544 864V672h128L512 480 352 672h128v192H352v64h320v-64h-128zM810.667 341.333H704V234.667L810.667 341.333zM213.333 128h554.667l128 128v597.333c0 23.467-19.2 42.667-42.667 42.667H213.333c-23.466 0-42.666-19.2-42.666-42.667V170.667c0-23.467 19.2-42.667 42.666-42.667z"/>
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 1024 1024"
+                        style="vertical-align:middle;margin-right:6px;">
+                        <path
+                            d="M544 864V672h128L512 480 352 672h128v192H352v64h320v-64h-128zM810.667 341.333H704V234.667L810.667 341.333zM213.333 128h554.667l128 128v597.333c0 23.467-19.2 42.667-42.667 42.667H213.333c-23.466 0-42.666-19.2-42.666-42.667V170.667c0-23.467 19.2-42.667 42.666-42.667z" />
                     </svg>
                     📤 上传Excel文件
                 </button>
@@ -149,15 +148,23 @@
         </main>
         <!-- 移动端地图/列表切换按钮 -->
         <button class="ma-fab" id="toggleViewBtn" style="display:none;">
-            <svg width="24" height="24" fill="currentColor"><use xlink:href="#icon-list"></use></svg>
+            <svg width="24" height="24" fill="currentColor">
+                <use xlink:href="#icon-list"></use>
+            </svg>
         </button>
         <!-- SVG 图标定义 -->
         <svg style="display:none;">
-            <symbol id="icon-upload" viewBox="0 0 1024 1024"><path d="M512 128l256 256h-160v256h-192V384H256z"/><path d="M128 832h768v64H128z"/></symbol>
-            <symbol id="icon-list" viewBox="0 0 1024 1024"><path d="M128 192h768v64H128zM128 480h768v64H128zM128 768h768v64H128z"/></symbol>
+            <symbol id="icon-upload" viewBox="0 0 1024 1024">
+                <path d="M512 128l256 256h-160v256h-192V384H256z" />
+                <path d="M128 832h768v64H128z" />
+            </symbol>
+            <symbol id="icon-list" viewBox="0 0 1024 1024">
+                <path d="M128 192h768v64H128zM128 480h768v64H128zM128 768h768v64H128z" />
+            </symbol>
         </svg>
     </div>
-    
+
     <script src="./js/main.js"></script>
 </body>
+
 </html>
