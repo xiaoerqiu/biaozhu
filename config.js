@@ -9,12 +9,17 @@ const config = {
         // SQLite数据库文件路径
         path: process.env.DB_PATH || './data/map_annotation.db'
     },
+    // 地图服务商：'amap'（高德）或 'baidu'（百度），默认高德
+    mapProvider: process.env.MAP_PROVIDER || 'amap',
+    // 高德地图配置
+    amap: {
+        apiKey: process.env.AMAP_API_KEY || 'your_amap_api_key_here',
+        securityJsCode: process.env.AMAP_SECURITY_KEY || '',
+    },
+    // 百度地图配置
     baiduMap: {
-        // 从环境变量获取百度地图API密钥
         apiKey: process.env.BAIDU_MAP_API_KEY || 'your_default_api_key_here',
-        // 百度地图API配置
         apiVersion: '3.0',
-        // 地理编码服务配置
         geocoding: {
             retryTimes: 3,
             retryDelay: 1000

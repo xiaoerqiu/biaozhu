@@ -7,69 +7,105 @@
     <link rel="stylesheet" href="./css/antd.css">
     <link rel="stylesheet" href="./css/custom.css">
     <link rel="stylesheet" href="./css/map-styles.css">
-    <!-- 百度地图API - 动态加载 -->
+    <!-- 地图API - 动态加载（支持高德/百度切换） -->
     <script>
-        // 百度地图API加载状态
-        window.baiduMapLoaded = false;
-        window.baiduMapCallbacks = [];
-        
-        // 注册百度地图加载完成回调
-        window.onBaiduMapLoaded = function(callback) {
-            if (window.baiduMapLoaded && window.BMap && window.BMap.Map) {
+        // 地图加载状态
+        window.mapLoaded = false;
+        window.mapCallbacks = [];
+        window.mapProvider = ''; // 'amap' 或 'baidu'
+
+        // 注册地图加载完成回调
+        window.onMapLoaded = function(callback) {
+            if (window.mapLoaded) {
                 callback();
             } else {
-                window.baiduMapCallbacks.push(callback);
+                window.mapCallbacks.push(callback);
             }
         };
-        
-        // 百度地图加载完成回调
-        window.initBaiduMap = function() {
-            window.baiduMapLoaded = true;
-            console.log('百度地图API加载成功');
-            window.baiduMapCallbacks.forEach(cb => cb());
-            window.baiduMapCallbacks = [];
+
+        // 地图加载完成触发
+        window._fireMapLoaded = function() {
+            window.mapLoaded = true;
+            console.log(`${window.mapProvider === 'amap' ? '高德' : '百度'}地图API加载成功`);
+            window.mapCallbacks.forEach(cb => cb());
+            window.mapCallbacks = [];
         };
-        
-        // 动态加载百度地图API
+
+        // 加载高德地图
+        function loadAMap(apiKey, securityJsCode) {
+            // 设置安全密钥（高德2.0要求）
+            if (securityJsCode) {
+                window._AMapSecurityConfig = { securityJsCode: securityJsCode };
+            }
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geocoder,AMap.Geolocation,AMap.CitySearch,AMap.ToolBar,AMap.Scale`;
+            script.onload = function() {
+                let checkCount = 0;
+                const check = setInterval(() => {
+                    checkCount++;
+                    if (window.AMap && window.AMap.Map) {
+                        clearInterval(check);
+                        window._fireMapLoaded();
+                    } else if (checkCount > 50) {
+                        clearInterval(check);
+                        console.error('高德地图API加载超时');
+                    }
+                }, 100);
+            };
+            script.onerror = function() {
+                console.error('高德地图API脚本加载失败');
+            };
+            document.head.appendChild(script);
+        }
+
+        // 加载百度地图
+        function loadBaiduMap(apiKey) {
+            window.BMap_loadScriptTime = (new Date).getTime();
+            window.initBaiduMap = function() {
+                window.BMap = window.BMapGL;
+                window._fireMapLoaded();
+            };
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = `https://api.map.baidu.com/getscript?type=webgl&v=1.0&ak=${apiKey}&services=&t=${Date.now()}`;
+            script.onload = function() {
+                let checkCount = 0;
+                const checkBMap = setInterval(() => {
+                    checkCount++;
+                    if (window.BMapGL && window.BMapGL.Map) {
+                        clearInterval(checkBMap);
+                        window.initBaiduMap();
+                    } else if (checkCount > 50) {
+                        clearInterval(checkBMap);
+                        console.error('百度地图API加载超时');
+                    }
+                }, 100);
+            };
+            script.onerror = function() {
+                console.error('百度地图API脚本加载失败');
+            };
+            document.head.appendChild(script);
+        }
+
+        // 动态加载地图API
         (function() {
             fetch('/api/map-key')
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success && data.apiKey) {
-                        // 百度地图JavaScript API 3.0 异步加载
-                        window.BMap_loadScriptTime = (new Date).getTime();
-                        const script = document.createElement('script');
-                        script.type = 'text/javascript';
-                        script.src = `https://api.map.baidu.com/getscript?type=webgl&v=1.0&ak=${data.apiKey}&services=&t=${Date.now()}`;
-                        
-                        script.onload = function() {
-                            // 检测BMapGL是否加载成功
-                            let checkCount = 0;
-                            const checkBMap = setInterval(() => {
-                                checkCount++;
-                                if (window.BMapGL && window.BMapGL.Map) {
-                                    clearInterval(checkBMap);
-                                    // 创建BMap别名以兼容旧代码
-                                    window.BMap = window.BMapGL;
-                                    window.initBaiduMap();
-                                } else if (checkCount > 50) {
-                                    clearInterval(checkBMap);
-                                    console.error('百度地图API加载超时');
-                                }
-                            }, 100);
-                        };
-                        
-                        script.onerror = function() {
-                            console.error('百度地图API脚本加载失败');
-                        };
-                        
-                        document.head.appendChild(script);
+                    if (!data.success || !data.apiKey) {
+                        console.error('无法获取地图API密钥');
+                        return;
+                    }
+                    window.mapProvider = data.provider;
+                    if (data.provider === 'amap') {
+                        loadAMap(data.apiKey, data.securityJsCode);
                     } else {
-                        console.error('无法获取百度地图API密钥');
+                        loadBaiduMap(data.apiKey);
                     }
                 })
                 .catch(err => {
-                    console.error('获取百度地图API密钥失败:', err);
+                    console.error('获取地图API密钥失败:', err);
                 });
         })();
     </script>

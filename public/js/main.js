@@ -4,6 +4,11 @@ let markers = [];
 let selectedCardIndex = -1; // 当前选中的卡片索引
 let geolocation = null; // 定位控件
 
+// 判断当前使用的是否为高德地图
+function isAMap() {
+    return window.mapProvider === 'amap';
+}
+
 // 请求队列管理器
 class RequestQueue {
     constructor(qps = 30) {
@@ -156,14 +161,14 @@ let currentDeleteIndex = -1;
 function showContextMenu(e, index) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     currentEditIndex = index;
     currentDeleteIndex = index;
-    
+
     contextMenu.style.display = 'block';
     contextMenu.style.left = e.pageX + 'px';
     contextMenu.style.top = e.pageY + 'px';
-    
+
     // 确保菜单不超出视口
     const rect = contextMenu.getBoundingClientRect();
     if (rect.right > window.innerWidth) {
@@ -185,11 +190,11 @@ function hideContextMenu() {
 function openEditModal(index) {
     currentEditIndex = index;
     const item = addresses[index];
-    
+
     document.getElementById('edit-name').value = item.name || '';
     document.getElementById('edit-address').value = item.address || '';
     document.getElementById('edit-type').value = item.type || '';
-    
+
     editModal.style.display = 'flex';
     hideContextMenu();
 }
@@ -203,28 +208,28 @@ function closeEditModal() {
 // 保存编辑
 async function saveEdit() {
     if (currentEditIndex < 0) return;
-    
+
     const item = addresses[currentEditIndex];
     const name = document.getElementById('edit-name').value.trim();
     const address = document.getElementById('edit-address').value.trim();
     const type = document.getElementById('edit-type').value.trim();
-    
+
     if (!address) {
         showUploadStatus('地址不能为空', 'error');
         return;
     }
-    
+
     try {
         showUploadStatus('正在保存...', 'loading', true);
-        
+
         const response = await fetch(`/addresses/${item.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, address, type, lng: item.lng, lat: item.lat })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             // 更新本地数据
             addresses[currentEditIndex] = { ...addresses[currentEditIndex], name, address, type };
@@ -244,7 +249,7 @@ async function saveEdit() {
 function openDeleteModal(index) {
     currentDeleteIndex = index;
     const item = addresses[index];
-    
+
     document.getElementById('delete-info').textContent = `${item.name || '未命名'} - ${item.address || '无地址'}`;
     deleteModal.style.display = 'flex';
     hideContextMenu();
@@ -259,28 +264,28 @@ function closeDeleteModal() {
 // 确认删除
 async function confirmDelete() {
     if (currentDeleteIndex < 0) return;
-    
+
     const item = addresses[currentDeleteIndex];
-    
+
     try {
         showUploadStatus('正在删除...', 'loading', true);
-        
+
         const response = await fetch(`/addresses/${item.id}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             // 从本地数据中移除
             addresses.splice(currentDeleteIndex, 1);
-            
+
             // 调整页码
             const maxPage = Math.max(1, Math.ceil(addresses.length / itemsPerPage));
             if (currentPage > maxPage) {
                 currentPage = maxPage;
             }
-            
+
             selectedCardIndex = -1;
             renderAddressList();
             markAddressesOnMap(addresses);
@@ -311,7 +316,7 @@ function renderEmptyState() {
 function renderAddressList() {
     const addressList = document.getElementById('address-list');
     addressList.innerHTML = '';
-    
+
     // 空状态处理
     if (addresses.length === 0) {
         addressList.innerHTML = renderEmptyState();
@@ -321,20 +326,20 @@ function renderAddressList() {
         document.getElementById('next-page').disabled = true;
         return;
     }
-    
+
     const start = (currentPage - 1) * itemsPerPage;
     const end = Math.min(start + itemsPerPage, addresses.length);
-    
+
     for (let i = start; i < end; i++) {
         const item = addresses[i];
         const li = document.createElement('li');
         const isSelected = i === selectedCardIndex;
         li.className = `ma-address-card ${isSelected ? 'ma-card-selected' : ''}`;
         li.dataset.index = i;
-        
+
         // 添加序号和类型标签
         const typeTag = item.type ? `<span class="ma-type-tag">${item.type}</span>` : '';
-        
+
         li.innerHTML = `
             <div class="ma-card-header">
                 <span class="ma-card-index">${i + 1}</span>
@@ -343,25 +348,33 @@ function renderAddressList() {
             <div class="ma-card-title">${item.name || '未命名地点'}</div>
             <div class="ma-card-desc">${item.address || '暂无地址'}</div>
         `;
-        
+
         // 左键点击 - 定位到地图
         li.onclick = () => {
             selectedCardIndex = i;
             updateSelectedCard();
-            
+
             if (markers[i]) {
-                map.centerAndZoom(markers[i].getPosition(), 16);
-                markers[i].setAnimation(window.BMAP_ANIMATION_BOUNCE);
-                setTimeout(() => markers[i].setAnimation(null), 1400);
+                if (isAMap()) {
+                    // 高德地图
+                    map.setZoomAndCenter(16, markers[i].getPosition());
+                    markers[i].setAnimation('AMAP_ANIMATION_BOUNCE');
+                    setTimeout(() => markers[i].setAnimation('AMAP_ANIMATION_NONE'), 1400);
+                } else {
+                    // 百度地图
+                    map.centerAndZoom(markers[i].getPosition(), 16);
+                    markers[i].setAnimation(window.BMAP_ANIMATION_BOUNCE);
+                    setTimeout(() => markers[i].setAnimation(null), 1400);
+                }
             }
         };
-        
+
         // 右键点击 - 显示菜单
         li.oncontextmenu = (e) => showContextMenu(e, i);
-        
+
         addressList.appendChild(li);
     }
-    
+
     document.getElementById('current-page').textContent = currentPage;
     document.getElementById('total-pages').textContent = Math.max(1, Math.ceil(addresses.length / itemsPerPage));
     document.getElementById('prev-page').disabled = currentPage === 1;
@@ -385,19 +398,19 @@ let uploadStatusTimer = null;
 // 显示上传状态（支持loading动画）
 function showUploadStatus(message, type, showSpinner = false) {
     const status = document.getElementById('upload-status');
-    
+
     const spinnerHtml = showSpinner ? '<span class="ma-spinner"></span>' : '';
     const iconHtml = type === 'error' ? '❌ ' : (type === 'success' ? '✅ ' : '');
-    
+
     status.innerHTML = `${spinnerHtml}${iconHtml}${message}`;
     status.style.display = message ? 'flex' : 'none';
     status.className = `ma-upload-status ma-status-${type}`;
-    
+
     if (uploadStatusTimer) {
         clearTimeout(uploadStatusTimer);
         uploadStatusTimer = null;
     }
-    
+
     if (message && type === 'success') {
         uploadStatusTimer = setTimeout(() => {
             status.style.display = 'none';
@@ -410,13 +423,61 @@ function showUploadStatus(message, type, showSpinner = false) {
 
 function markAddressesOnMap(addresses) {
     if (!map) return;
-    map.clearOverlays();
+
+    // 清除已有覆盖物
+    if (isAMap()) {
+        map.clearMap();
+    } else {
+        map.clearOverlays();
+    }
     markers = [];
-    const geocoder = new BMap.Geocoder();
     let points = [];
-    
+
+    // 地理编码器
+    let geocoder = null;
+    if (isAMap()) {
+        geocoder = new AMap.Geocoder();
+    } else {
+        geocoder = new BMap.Geocoder();
+    }
+
     addresses.forEach((item, idx) => {
-        function addMarker(point) {
+        function addMarkerAMap(lnglat) {
+            const marker = new AMap.Marker({
+                position: lnglat,
+                map: map
+            });
+
+            if (item.name) {
+                marker.setLabel({
+                    content: item.name,
+                    offset: new AMap.Pixel(20, -10),
+                    direction: 'right'
+                });
+                // 高德标签样式通过 CSS 类 amap-marker-label 控制，也可内联
+            }
+
+            const infoHtml = `
+                <div style='font-size:15px;font-weight:bold;margin-bottom:6px;'>名称：${item.name || ''}</div>
+                <div style='margin-bottom:4px;'><b>地址：</b>${item.address || ''}</div>
+                <div><b>类型：</b>${item.type || '无'}</div>
+            `;
+            const infoWindow = new AMap.InfoWindow({
+                content: infoHtml,
+                offset: new AMap.Pixel(0, -30)
+            });
+
+            marker.on('click', function () {
+                selectedCardIndex = idx;
+                updateSelectedCard();
+                infoWindow.open(map, lnglat);
+            });
+
+            markers[idx] = marker;
+            points.push(lnglat);
+        }
+
+        function addMarkerBaidu(point) {
             const marker = new BMap.Marker(point);
             if (item.name) {
                 const label = new BMap.Label(item.name, {
@@ -434,7 +495,7 @@ function markAddressesOnMap(addresses) {
                 });
                 marker.setLabel(label);
             }
-            
+
             const infoHtml = `
                 <div style='font-size:15px;font-weight:bold;margin-bottom:6px;'>名称：${item.name || ''}</div>
                 <div style='margin-bottom:4px;'><b>地址：</b>${item.address || ''}</div>
@@ -445,31 +506,53 @@ function markAddressesOnMap(addresses) {
                 title: item.name || '地址信息',
                 enableMessage: false
             });
-            
-            marker.addEventListener('click', function() {
+
+            marker.addEventListener('click', function () {
                 selectedCardIndex = idx;
                 updateSelectedCard();
                 map.openInfoWindow(infoWindow, point);
             });
-            
+
             map.addOverlay(marker);
             markers[idx] = marker;
             points.push(point);
         }
-        
-        if (item.lng && item.lat) {
-            const point = new BMap.Point(item.lng, item.lat);
-            addMarker(point);
-        } else if (item.address) {
-            geocoder.getPoint(item.address, (point) => {
-                if (point) addMarker(point);
-            }, '中国');
+
+        if (isAMap()) {
+            // 高德地图
+            if (item.lng && item.lat) {
+                const lnglat = new AMap.LngLat(item.lng, item.lat);
+                addMarkerAMap(lnglat);
+            } else if (item.address) {
+                geocoder.getLocation(item.address, (status, result) => {
+                    if (status === 'complete' && result.geocodes && result.geocodes.length > 0) {
+                        const lnglat = result.geocodes[0].location;
+                        addMarkerAMap(lnglat);
+                    }
+                });
+            }
+        } else {
+            // 百度地图
+            if (item.lng && item.lat) {
+                const point = new BMap.Point(item.lng, item.lat);
+                addMarkerBaidu(point);
+            } else if (item.address) {
+                geocoder.getPoint(item.address, (point) => {
+                    if (point) addMarkerBaidu(point);
+                }, '中国');
+            }
         }
     });
-    
+
     setTimeout(() => {
-        if (points.length > 0) {
-            map.setViewport(points);
+        if (isAMap()) {
+            if (markers.filter(m => m).length > 0) {
+                map.setFitView(markers.filter(m => m));
+            }
+        } else {
+            if (points.length > 0) {
+                map.setViewport(points);
+            }
         }
     }, 800);
 }
@@ -477,33 +560,68 @@ function markAddressesOnMap(addresses) {
 // 定位到当前位置
 function locateCurrentPosition() {
     if (!map) return;
-    
+
     showUploadStatus('正在定位...', 'loading', true);
-    
-    const geolocation = new BMap.Geolocation();
-    geolocation.getCurrentPosition(function(r) {
-        if (this.getStatus() === BMAP_STATUS_SUCCESS) {
-            map.panTo(r.point);
-            map.setZoom(14);
-            
-            // 添加当前位置标记
-            const marker = new BMap.Marker(r.point);
-            map.addOverlay(marker);
-            
-            const circle = new BMap.Circle(r.point, r.accuracy, {
-                strokeColor: '#1677ff',
-                strokeWeight: 2,
-                strokeOpacity: 0.5,
-                fillColor: '#1677ff',
-                fillOpacity: 0.1
-            });
-            map.addOverlay(circle);
-            
-            showUploadStatus(`已定位到：${r.address.province}${r.address.city}`, 'success');
-        } else {
-            showUploadStatus('定位失败，请检查定位权限', 'error');
-        }
-    }, { enableHighAccuracy: true });
+
+    if (isAMap()) {
+        // 高德地图定位
+        const geolocation = new AMap.Geolocation({
+            enableHighAccuracy: true,
+            timeout: 10000
+        });
+        geolocation.getCurrentPosition(function (status, result) {
+            if (status === 'complete') {
+                const pos = result.position;
+                map.setZoomAndCenter(14, pos);
+
+                const marker = new AMap.Marker({
+                    position: pos,
+                    map: map
+                });
+
+                const circle = new AMap.Circle({
+                    center: pos,
+                    radius: result.accuracy,
+                    strokeColor: '#1677ff',
+                    strokeWeight: 2,
+                    strokeOpacity: 0.5,
+                    fillColor: '#1677ff',
+                    fillOpacity: 0.1,
+                    map: map
+                });
+
+                const addr = result.formattedAddress || '';
+                showUploadStatus(`已定位到：${addr}`, 'success');
+            } else {
+                showUploadStatus('定位失败，请检查定位权限', 'error');
+            }
+        });
+    } else {
+        // 百度地图定位
+        const geolocation = new BMap.Geolocation();
+        geolocation.getCurrentPosition(function (r) {
+            if (this.getStatus() === BMAP_STATUS_SUCCESS) {
+                map.panTo(r.point);
+                map.setZoom(14);
+
+                const marker = new BMap.Marker(r.point);
+                map.addOverlay(marker);
+
+                const circle = new BMap.Circle(r.point, r.accuracy, {
+                    strokeColor: '#1677ff',
+                    strokeWeight: 2,
+                    strokeOpacity: 0.5,
+                    fillColor: '#1677ff',
+                    fillOpacity: 0.1
+                });
+                map.addOverlay(circle);
+
+                showUploadStatus(`已定位到：${r.address.province}${r.address.city}`, 'success');
+            } else {
+                showUploadStatus('定位失败，请检查定位权限', 'error');
+            }
+        }, { enableHighAccuracy: true });
+    }
 }
 
 // 添加定位按钮到地图
@@ -513,7 +631,7 @@ function addLocationButton() {
     btn.innerHTML = '📍';
     btn.title = '定位到当前位置';
     btn.onclick = locateCurrentPosition;
-    
+
     document.getElementById('map-container').appendChild(btn);
 }
 
@@ -522,10 +640,10 @@ function initDrawerToggle() {
     const drawer = document.getElementById('drawerList');
     const btn = document.getElementById('drawerToggleBtn');
     let hidden = false;
-    
+
     btn.querySelector('svg').style.transform = 'rotate(0deg)';
 
-    btn.onclick = function() {
+    btn.onclick = function () {
         hidden = !hidden;
         if (hidden) {
             drawer.classList.add('drawer-hidden');
@@ -544,15 +662,15 @@ document.addEventListener('DOMContentLoaded', () => {
     contextMenu = createContextMenu();
     editModal = createEditModal();
     deleteModal = createDeleteModal();
-    
+
     // 点击其他地方隐藏右键菜单
     document.addEventListener('click', hideContextMenu);
-    
+
     // 右键菜单点击事件
     contextMenu.addEventListener('click', (e) => {
         const menuItem = e.target.closest('.ma-menu-item');
         if (!menuItem) return;
-        
+
         const action = menuItem.dataset.action;
         if (action === 'edit') {
             openEditModal(currentEditIndex);
@@ -560,35 +678,35 @@ document.addEventListener('DOMContentLoaded', () => {
             openDeleteModal(currentDeleteIndex);
         }
     });
-    
+
     // 显示地图加载提示
     showMapLoading(true);
-    
-    // 等待百度地图API加载完成后初始化地图
-    window.onBaiduMapLoaded(() => {
+
+    // 等待地图API加载完成后初始化地图
+    window.onMapLoaded(() => {
         initMap();
         addLocationButton();
         showMapLoading(false);
         loadStoredAddresses();
     });
-    
+
     initDrawerToggle();
 
     // 上传按钮
     document.getElementById('upload-btn').onclick = () => {
         document.getElementById('excel-file').click();
     };
-    
-    document.getElementById('excel-file').onchange = function() {
+
+    document.getElementById('excel-file').onchange = function () {
         const file = this.files[0];
         if (!file) return;
-        
+
         const fileInput = this;
         const formData = new FormData();
         formData.append('file', file);
-        
+
         showUploadStatus('正在上传并解析文件...', 'loading', true);
-        
+
         fetch('/upload', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(res => {
@@ -656,19 +774,38 @@ function loadStoredAddresses() {
 
 function initMap() {
     try {
-        map = new BMap.Map('map-container');
-        
-        // 使用IP定位获取当前省份
-        const localCity = new BMap.LocalCity();
-        localCity.get((result) => {
-            const cityName = result.name;
-            map.centerAndZoom(cityName, 10);
-        });
-        
-        map.enableScrollWheelZoom();
-        map.addControl(new BMap.NavigationControl());
-        map.addControl(new BMap.ScaleControl());
-        
+        if (isAMap()) {
+            // ====== 高德地图初始化 ======
+            map = new AMap.Map('map-container', {
+                zoom: 10,
+                viewMode: '2D'
+            });
+
+            // 使用 CitySearch 插件获取当前城市
+            const citySearch = new AMap.CitySearch();
+            citySearch.getLocalCity(function (status, result) {
+                if (status === 'complete' && result.info === 'OK') {
+                    map.setCity(result.city);
+                }
+            });
+
+            // 添加控件
+            map.addControl(new AMap.ToolBar({ position: 'RT' }));
+            map.addControl(new AMap.Scale());
+        } else {
+            // ====== 百度地图初始化 ======
+            map = new BMap.Map('map-container');
+
+            const localCity = new BMap.LocalCity();
+            localCity.get((result) => {
+                const cityName = result.name;
+                map.centerAndZoom(cityName, 10);
+            });
+
+            map.enableScrollWheelZoom();
+            map.addControl(new BMap.NavigationControl());
+            map.addControl(new BMap.ScaleControl());
+        }
     } catch (error) {
         console.error('地图初始化失败:', error);
         showUploadStatus('地图加载失败，请刷新页面重试', 'error');

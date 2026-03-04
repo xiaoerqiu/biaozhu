@@ -20,12 +20,23 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// 添加获取百度地图API密钥的端点
+// 获取地图配置的端点（支持高德/百度切换）
 app.get('/api/map-key', (req, res) => {
-    res.json({
-        success: true,
-        apiKey: config.baiduMap.apiKey
-    });
+    const provider = config.mapProvider; // 'amap' 或 'baidu'
+    if (provider === 'amap') {
+        res.json({
+            success: true,
+            provider: 'amap',
+            apiKey: config.amap.apiKey,
+            securityJsCode: config.amap.securityJsCode
+        });
+    } else {
+        res.json({
+            success: true,
+            provider: 'baidu',
+            apiKey: config.baiduMap.apiKey
+        });
+    }
 });
 
 // 配置文件上传
@@ -67,11 +78,11 @@ app.put('/addresses/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const { name, address, type, lng, lat } = req.body;
-        
+
         if (!address) {
             return res.status(400).json({ success: false, error: '地址不能为空' });
         }
-        
+
         const updated = db.updateAddress(id, {
             name: name || '',
             address,
@@ -79,7 +90,7 @@ app.put('/addresses/:id', (req, res) => {
             lng: lng || null,
             lat: lat || null
         });
-        
+
         if (updated) {
             logger.info(`地址更新成功: ID=${id}`);
             res.json({ success: true, data: updated });
@@ -97,7 +108,7 @@ app.delete('/addresses/:id', (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const deleted = db.deleteAddress(id);
-        
+
         if (deleted) {
             logger.info(`地址删除成功: ID=${id}`);
             res.json({ success: true });
@@ -114,16 +125,16 @@ app.delete('/addresses/:id', (req, res) => {
 app.get('/health', (req, res) => {
     try {
         const count = db.count();
-        res.status(200).json({ 
-            status: 'ok', 
-            database: 'sqlite', 
-            records: count 
+        res.status(200).json({
+            status: 'ok',
+            database: 'sqlite',
+            records: count
         });
     } catch (error) {
-        res.status(503).json({ 
-            status: 'error', 
-            database: 'sqlite', 
-            error: error.message 
+        res.status(503).json({
+            status: 'error',
+            database: 'sqlite',
+            error: error.message
         });
     }
 });

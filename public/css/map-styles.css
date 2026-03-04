@@ -567,4 +567,16 @@
     padding: 10px;
     border-radius: 6px;
     word-break: break-all;
-} 
+}
+
+/* 高德地图标签样式 */
+.amap-marker-label {
+    color: #1677ff;
+    font-weight: bold;
+    font-size: 14px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid #e6f4ff;
+    border-radius: 4px;
+    padding: 2px 8px;
+    box-shadow: 0 2px 8px rgba(22,119,255,0.08);
+}
