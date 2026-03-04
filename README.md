@@ -1,11 +1,11 @@
 # 地图标注系统
 
-基于百度地图的轻量级地址标注与可视化系统，支持批量导入Excel数据并在地图上展示标记点。
+基于高德/百度地图的轻量级地址标注与可视化系统，支持批量导入Excel数据并在地图上展示标记点。默认使用高德地图，支持后端配置切换。
 
 ## ✨ 功能特性
 
 - 📍 **批量地址标注**：支持Excel文件批量导入地址数据
-- 🗺️ **地图可视化**：基于百度地图API展示所有地址标记
+- 🗺️ **双地图引擎**：支持高德地图（默认）和百度地图，后端配置一键切换
 - 🎯 **地理编码**：自动将地址转换为地图坐标
 - 💾 **数据持久化**：使用SQLite轻量级数据库存储
 - 🐳 **容器化部署**：Docker容器化部署，开箱即用
@@ -15,7 +15,7 @@
 
 ### 前端
 - HTML5 + CSS3 + JavaScript
-- 百度地图JavaScript API v3.0
+- 高德地图 JS API 2.0（默认）/ 百度地图 JavaScript API
 - 响应式布局设计
 
 ### 后端
@@ -32,13 +32,15 @@
 
 - Node.js 18+
 - Docker & Docker Compose（容器化部署）
-- 百度地图API密钥
+- 高德地图API密钥 或 百度地图API密钥
 
 ## 🚀 快速开始
 
-### 1. 获取百度地图API密钥
+### 1. 获取地图API密钥
 
-访问 [百度地图开放平台](https://lbsyun.baidu.com/apiconsole/key) 申请API密钥
+**高德地图（默认）**：访问 [高德开放平台](https://console.amap.com/dev/key/app) 申请API密钥，选择"Web端(JS API)"类型
+
+**百度地图（备选）**：访问 [百度地图开放平台](https://lbsyun.baidu.com/apiconsole/key) 申请API密钥
 
 ### 2. 配置环境变量
 
@@ -46,14 +48,21 @@
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，填入您的百度地图API密钥：
+编辑 `.env` 文件，配置地图服务商和API密钥：
 
 ```env
 PORT=3000
 LOG_LEVEL=info
 LOG_FILE=./logs/app.log
 
-# 百度地图API配置
+# 地图服务商：amap（高德，默认）或 baidu（百度）
+MAP_PROVIDER=amap
+
+# 高德地图API配置
+AMAP_API_KEY=your_amap_api_key_here
+AMAP_SECURITY_KEY=your_amap_security_key_here
+
+# 百度地图API配置（使用百度地图时需要）
 BAIDU_MAP_API_KEY=your_baidu_map_api_key_here
 ```
 
@@ -87,7 +96,21 @@ npm run dev
 
 服务将在 `http://localhost:3000` 启动
 
-## 📖 使用指南
+## � 切换地图服务商
+
+修改 `.env` 文件中的 `MAP_PROVIDER` 即可切换地图引擎：
+
+```env
+# 使用高德地图（默认）
+MAP_PROVIDER=amap
+
+# 切换到百度地图
+MAP_PROVIDER=baidu
+```
+
+修改后重启服务即可生效。
+
+## �📖 使用指南
 
 ### Excel文件格式
 
@@ -114,7 +137,7 @@ Excel文件需包含以下列（表头名称必须匹配）：
 
 1. **上传Excel文件**：点击"上传文件"按钮，选择包含地址数据的Excel文件
 2. **自动解析**：系统自动解析Excel并提取地址信息
-3. **地理编码**：系统调用百度地图API将地址转换为坐标（如果Excel中未提供坐标）
+3. **地理编码**：系统调用地图API将地址转换为坐标（如果Excel中未提供坐标）
 4. **地图展示**：所有地址自动显示在地图上，可点击查看详情
 5. **数据持久化**：地址数据自动保存到SQLite数据库
 
@@ -123,17 +146,17 @@ Excel文件需包含以下列（表头名称必须匹配）：
 ```
 .
 ├── server.js              # Express服务器主文件
-├── config.js              # 配置文件
+├── config.js              # 配置文件（含地图服务商切换）
 ├── models/
 │   └── db.js             # SQLite数据库模型
 ├── utils/
 │   └── logger.js         # 日志工具
 ├── public/
-│   ├── index.html        # 前端页面
+│   ├── index.html        # 前端页面（动态加载地图SDK）
 │   ├── css/
 │   │   └── style.css     # 样式文件
 │   └── js/
-│       └── main.js       # 前端逻辑
+│       └── main.js       # 前端逻辑（高德/百度适配器）
 ├── uploads/              # 文件上传目录
 ├── data/                 # SQLite数据库文件目录
 ├── logs/                 # 日志文件目录
@@ -199,18 +222,30 @@ GET /addresses
 }
 ```
 
-### 获取百度地图API密钥
+### 获取地图配置
 
 ```http
 GET /api/map-key
 ```
 
-**响应：**
+**响应（高德地图）：**
 
 ```json
 {
   "success": true,
-  "apiKey": "your_api_key"
+  "provider": "amap",
+  "apiKey": "your_amap_key",
+  "securityJsCode": "your_security_key"
+}
+```
+
+**响应（百度地图）：**
+
+```json
+{
+  "success": true,
+  "provider": "baidu",
+  "apiKey": "your_baidu_key"
 }
 ```
 
@@ -243,7 +278,9 @@ docker build -t map-annotation .
 ```bash
 docker run -d \
   -p 18000:3000 \
-  -e BAIDU_MAP_API_KEY=your_api_key \
+  -e MAP_PROVIDER=amap \
+  -e AMAP_API_KEY=your_amap_key \
+  -e AMAP_SECURITY_KEY=your_security_key \
   -v $(pwd)/uploads:/app/uploads \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/logs:/app/logs \
@@ -291,9 +328,10 @@ Docker volumes挂载以下目录实现数据持久化：
 
 ### 地图无法显示
 
-1. 检查百度地图API密钥是否正确
-2. 确认API密钥的服务权限包含"JavaScript API"
-3. 检查浏览器控制台错误信息
+1. 检查地图API密钥是否正确配置
+2. **高德地图**：确认密钥类型为"Web端(JS API)"，安全密钥已正确填写
+3. **百度地图**：确认API密钥的服务权限包含"JavaScript API"
+4. 检查浏览器控制台错误信息
 
 ### 地址无法标注
 
@@ -342,6 +380,8 @@ MIT License
 
 ## 🔗 相关链接
 
+- [高德开放平台](https://lbs.amap.com/)
+- [高德地图 JS API 2.0 文档](https://lbs.amap.com/api/javascript-api-v2/summary)
 - [百度地图开放平台](https://lbsyun.baidu.com/)
 - [百度地图JavaScript API文档](https://lbsyun.baidu.com/cms/jsapi/reference/jsapi_reference_3_0.html)
 - [Express框架](https://expressjs.com/)
