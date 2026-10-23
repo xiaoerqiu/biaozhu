@@ -1,0 +1,311 @@
+/* ========== 设计变量 ========== */
+:root {
+    --primary: #1677ff;
+    --primary-hover: #4096ff;
+    --primary-active: #0958d9;
+    --primary-soft: #eef4ff;
+    --primary-ring: rgba(22, 119, 255, 0.22);
+
+    --text: #1d2129;
+    --text-2: #4e5969;
+    --text-3: #86909c;
+    --text-4: #a9aeb8;
+
+    --surface: #ffffff;
+    --bg: #f4f5f7;
+    --hover: #f2f3f5;
+    --border: #e5e6eb;
+    --border-strong: #c9cdd4;
+
+    --danger: #e5484d;
+    --danger-soft: #fff0f0;
+    --warning: #c2620a;
+    --warning-soft: #fff5e6;
+    --success: #18a058;
+
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 12px;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.16), 0 4px 12px rgba(15, 23, 42, 0.08);
+
+    --topbar-h: 56px;
+    --sidebar-w: 380px;
+
+    /* 层级 */
+    --z-map-ui: 10;
+    --z-sidebar: 20;
+    --z-topbar: 30;
+    --z-menu: 100;
+    --z-dialog: 200;
+    --z-toast: 300;
+    --z-drop: 400;
+
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+}
+
+/* ========== 重置 ========== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+}
+
+h1, h2, h3, p {
+    margin: 0;
+}
+
+button,
+input {
+    font: inherit;
+    color: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.icon {
+    flex: none;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.muted {
+    color: var(--text-3);
+}
+
+kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--text-3);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+}
+
+code {
+    padding: 1px 5px;
+    font-size: 12px;
+    background: var(--hover);
+    border-radius: 4px;
+}
+
+mark {
+    color: inherit;
+    background: #ffe58f;
+    border-radius: 2px;
+}
+
+/* ========== 按钮 ========== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn:active:not(:disabled) {
+    background: var(--primary-soft);
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.btn-primary {
+    color: #fff;
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 1px 2px rgba(22, 119, 255, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+    color: #fff;
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+    background: var(--primary-active);
+}
+
+.btn-danger {
+    color: #fff;
+    background: var(--danger);
+    border-color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+    color: #fff;
+    background: #f06368;
+    border-color: #f06368;
+}
+
+.btn-text {
+    border-color: transparent;
+    background: transparent;
+}
+
+.btn-text:hover:not(:disabled) {
+    border-color: transparent;
+    background: var(--hover);
+}
+
+.btn-text.is-danger,
+.btn-text.is-danger:hover {
+    color: var(--danger);
+}
+
+.btn-sm {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+}
+
+.btn-lg {
+    height: 40px;
+    padding: 0 20px;
+    font-size: 15px;
+}
+
+.btn-link {
+    padding: 0;
+    font-size: inherit;
+    color: var(--primary);
+    background: none;
+    border: none;
+}
+
+.btn-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--text-2);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn:hover {
+    color: var(--text);
+    background: var(--hover);
+}
+
+.icon-btn-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
+}
+
+.icon-btn-bordered {
+    width: 34px;
+    height: 34px;
+    background: var(--surface);
+    border-color: var(--border-strong);
+}
+
+.icon-btn-bordered:hover {
+    color: var(--primary);
+    background: var(--surface);
+    border-color: var(--primary);
+}
+
+/* ========== 加载动画 ========== */
+.spinner {
+    flex: none;
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    opacity: 0.8;
+}
+
+.spinner-sm {
+    width: 12px;
+    height: 12px;
+}
+
+.spinner-xs {
+    width: 10px;
+    height: 10px;
+    border-width: 1.5px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
