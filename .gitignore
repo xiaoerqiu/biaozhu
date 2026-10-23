@@ -5,7 +5,8 @@ node_modules/
 logs/
 *.log
 
-# Upload files
+# Runtime data
+data/
 uploads/
 
 # Environment variables
