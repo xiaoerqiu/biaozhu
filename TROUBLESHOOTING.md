@@ -98,7 +98,6 @@ services:
   web:
     volumes:
       - ./data:/app/data
-      - ./uploads:/app/uploads
 ```
 
 #### 2. 在云平台上配置存储卷
@@ -159,29 +158,27 @@ curl -I https://api.map.baidu.com
 
 #### 1. 检查文件格式
 
-Excel文件应包含以下列：
-- 地址（必需）
-- 名称（可选）
-- 描述（可选）
+Excel文件第一个工作表应包含以下列（支持中文或英文表头）：
+- 地址 / address（必需）
+- 名称 / name（可选）
+- 类型 / type（可选）
+- 经度 / lng、纬度 / lat（可选，未填写时自动根据地址定位）
 
-#### 2. 检查上传目录权限
+可在页面右上角「更多 → 下载导入模板」获取标准模板。
 
-```bash
-# 确保uploads目录存在且可写
-mkdir -p ./uploads
-chmod 755 ./uploads
-```
+#### 2. 检查文件大小与行数限制
 
-#### 3. 检查文件大小限制
-
-默认限制为10MB，如需修改，在`server.js`中调整：
+默认最大 10MB、5000 行，如需修改，在 `config.js` 的 `upload` 配置中调整：
 
 ```javascript
-const upload = multer({ 
-    dest: './uploads/',
-    limits: { fileSize: 20 * 1024 * 1024 } // 20MB
-});
+upload: {
+    maxFileSize: 20 * 1024 * 1024, // 20MB
+    allowedExtensions: ['.xlsx', '.xls', '.csv'],
+    maxRows: 5000
+}
 ```
+
+上传文件仅在内存中解析，不会写入磁盘。
 
 ## 问题5：健康检查失败
 
