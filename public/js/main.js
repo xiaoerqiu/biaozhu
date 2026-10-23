@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import { api } from './api.js';
 import { store } from './store.js';
 import { geocodeQueue } from './geocoder.js';
-import { loadMapSdk } from './map/loader.js';
+import { loadMapSdk, watchAmapAuthErrors } from './map/loader.js';
 import { AMapAdapter } from './map/amap.js';
 import { BaiduAdapter } from './map/baidu.js';
 import { Sidebar } from './ui/sidebar.js';
@@ -31,6 +31,8 @@ let pickResolver = null;
 let focusWhenLocated = null;
 // 地图加载失败时无法地理编码
 let mapFailed = false;
+let watchingAuth = false;
+let authFailed = false;
 
 // ========== 侧边栏 ==========
 
@@ -73,9 +75,15 @@ async function initMap() {
             showMapStatus('error', '未配置地图 API 密钥', `请在 .env 中设置 ${cfg.provider === 'amap' ? 'AMAP_API_KEY' : 'BAIDU_MAP_API_KEY'} 后重启服务`, false);
             return;
         }
+        if (cfg.provider === 'amap' && !watchingAuth) {
+            watchingAuth = true;
+            watchAmapAuthErrors(onMapAuthError);
+        }
         await loadMapSdk(cfg);
         const Adapter = cfg.provider === 'amap' ? AMapAdapter : BaiduAdapter;
         mapView = new Adapter(els.mapEl, { onMarkerClick, onMapClick });
+        // 密钥校验错误可能在初始化过程中就已触发，保留错误提示
+        if (authFailed) return;
         mapFailed = false;
         document.body.dataset.provider = cfg.provider;
         showMapStatus(null);
@@ -89,6 +97,15 @@ async function initMap() {
         geocodeQueue.abandon();
         showMapStatus('error', '地图加载失败', error.message, true);
     }
+}
+
+// 密钥校验失败：地图和地理编码都不可用，提示具体原因
+function onMapAuthError(code, message) {
+    authFailed = true;
+    mapFailed = true;
+    geocodeQueue.abandon();
+    const detail = code === 'INVALID_USER_DOMAIN' ? `${message}（当前域名：${location.hostname}）` : message;
+    showMapStatus('error', `高德地图密钥校验失败：${code}`, detail, false);
 }
 
 function showMapStatus(type, title = '', detail = '', retry = false) {
@@ -424,10 +441,14 @@ $('#map-controls').addEventListener('click', async (e) => {
     } else if (action === 'locate') {
         const t = toast('正在定位…', { type: 'loading' });
         try {
-            const { address } = await mapView.locate();
-            t.update(address ? `当前位置：${address}` : '已定位到当前位置', { type: 'success' });
-        } catch {
-            t.update('定位失败，请检查浏览器定位权限', { type: 'error' });
+            const { address, approximate, reason } = await mapView.locate();
+            if (approximate) {
+                t.update(`无法获取精确位置，已定位到所在城市「${address}」。${reason}`, { type: 'info', duration: 8000 });
+            } else {
+                t.update(address ? `当前位置：${address}` : '已定位到当前位置', { type: 'success' });
+            }
+        } catch (error) {
+            t.update(error.message || '定位失败，请检查浏览器定位权限', { type: 'error', duration: 6000 });
         }
     }
 });
