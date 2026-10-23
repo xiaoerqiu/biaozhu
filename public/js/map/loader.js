@@ -15,6 +15,36 @@ const SDK = {
 
 let scriptEl = null;
 
+// 高德密钥校验失败时没有事件，只会输出 console.error，后续瓦片与服务请求全部静默失败
+const AMAP_AUTH_ERRORS = {
+    INVALID_USER_DOMAIN: '当前域名不在该 Key 的域名白名单中，请在高德控制台的 Key 设置里添加当前域名（或清空白名单）',
+    INVALID_USER_KEY: 'API Key 无效，请检查 AMAP_API_KEY 配置',
+    USERKEY_PLAT_NOMATCH: 'Key 类型不匹配，请使用「Web端(JS API)」类型的 Key',
+    INVALID_USER_SCODE: '安全密钥错误，请检查 AMAP_SECURITY_KEY 配置',
+    USER_KEY_RECYCLED: 'Key 已被删除，请重新申请',
+    DAILY_QUERY_OVER_LIMIT: '今日调用量已超出配额',
+    ACCESS_TOO_FREQUENT: '访问过于频繁，请稍后重试'
+};
+
+/**
+ * 监听高德密钥校验错误
+ * @param {(code: string, message: string) => void} onError
+ */
+export function watchAmapAuthErrors(onError) {
+    const original = console.error;
+    let reported = false;
+    console.error = (...args) => {
+        original.apply(console, args);
+        if (reported) return;
+        const text = args.map(String).join(' ');
+        const code = Object.keys(AMAP_AUTH_ERRORS).find((key) => text.includes(key));
+        if (code) {
+            reported = true;
+            onError(code, AMAP_AUTH_ERRORS[code]);
+        }
+    };
+}
+
 /**
  * 动态加载地图 SDK，通过 SDK 的 callback 参数判断加载完成，超时则失败
  */

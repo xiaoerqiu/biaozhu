@@ -1,5 +1,6 @@
 import { CONFIG } from '../config.js';
 import { RetryableGeocodeError } from '../geocoder.js';
+import { checkLocateResult, describeLocateError } from '../utils.js';
 import { pinHtml, pinKey } from './markers.js';
 
 /**
@@ -10,6 +11,7 @@ export class AMapAdapter {
         this.provider = 'amap';
         this.markers = new Map(); // id -> { marker, key }
         this.map = new AMap.Map(container, {
+            center: CONFIG.MAP.DEFAULT_CENTER,
             zoom: CONFIG.MAP.DEFAULT_ZOOM,
             viewMode: '2D',
             resizeEnable: true
@@ -95,10 +97,8 @@ export class AMapAdapter {
 
     // 无数据时根据 IP 定位到所在城市
     centerOnCity() {
-        new AMap.CitySearch().getLocalCity((status, result) => {
-            if (status === 'complete' && result.info === 'OK' && this.markers.size === 0) {
-                this.map.setCity(result.city);
-            }
+        this._localCity().then((result) => {
+            if (result && this.markers.size === 0) this.map.setCity(result.city);
         });
     }
 
@@ -125,14 +125,49 @@ export class AMapAdapter {
         });
     }
 
-    locate() {
-        return new Promise((resolve, reject) => {
-            new AMap.Geolocation({ enableHighAccuracy: true, timeout: 10000 }).getCurrentPosition((status, result) => {
-                if (status !== 'complete') return reject(new Error(result?.message || '定位失败'));
-                const { lng, lat } = result.position;
+    /**
+     * 定位当前位置；精确定位不可用时退回到 IP 所在城市
+     * @returns {Promise<{ address: string, approximate?: boolean, reason?: string }>}
+     */
+    async locate() {
+        let reason;
+        try {
+            const result = await this._browserPosition();
+            const { lng, lat } = result.position;
+            // 境外坐标（常见于开启代理时）没有地图数据，直接跳转会显示空白地图
+            reason = checkLocateResult(lng, lat);
+            if (!reason) {
                 this._showMe(lng, lat, result.accuracy);
                 this.map.setZoomAndCenter(CONFIG.MAP.LOCATE_ZOOM, [lng, lat]);
-                resolve({ lng, lat, address: result.formattedAddress || '' });
+                return { address: result.formattedAddress || '' };
+            }
+        } catch (error) {
+            reason = error.message;
+        }
+
+        const city = await this._localCity();
+        if (!city) throw new Error(reason);
+        this.meOverlays?.forEach((o) => this.map.remove(o));
+        this.map.setBounds(city.bounds);
+        return { address: city.city, approximate: true, reason };
+    }
+
+    _browserPosition() {
+        return new Promise((resolve, reject) => {
+            new AMap.Geolocation({ enableHighAccuracy: true, timeout: 10000 }).getCurrentPosition((status, result) => {
+                if (status === 'complete') resolve(result);
+                else reject(new Error(describeLocateError(result?.message)));
+            });
+        });
+    }
+
+    // IP 定位所在城市；高德在部分网络环境下不会回调，需超时兜底
+    _localCity() {
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => resolve(null), 5000);
+            new AMap.CitySearch().getLocalCity((status, result) => {
+                clearTimeout(timer);
+                resolve(status === 'complete' && result.info === 'OK' && result.bounds ? result : null);
             });
         });
     }

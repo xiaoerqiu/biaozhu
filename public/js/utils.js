@@ -26,6 +26,30 @@ export const hasCoords = (item) => Number.isFinite(item.lng) && Number.isFinite(
 
 export const formatCoords = (item) => `${item.lng.toFixed(6)}, ${item.lat.toFixed(6)}`;
 
+// 粗略判断是否在中国范围内（高德/百度仅覆盖国内地图数据）
+export const isInChina = (lng, lat) => lng >= 73.4 && lng <= 135.1 && lat >= 3.8 && lat <= 53.6;
+
+/**
+ * 校验定位结果，返回 null 表示可用，否则返回给用户的提示
+ */
+export function checkLocateResult(lng, lat) {
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return '定位失败，未获取到有效坐标';
+    if (!isInChina(lng, lat)) {
+        return `定位结果不在国内（${lng.toFixed(2)}, ${lat.toFixed(2)}），可能是代理/VPN 导致，请关闭后重试`;
+    }
+    return null;
+}
+
+/**
+ * 将定位失败原因转为可读提示
+ */
+export function describeLocateError(raw = '') {
+    if (!window.isSecureContext) return '当前页面不是 HTTPS，浏览器禁止获取位置，请通过 HTTPS 或 localhost 访问';
+    if (/denied|permission/i.test(raw)) return '浏览器未授权定位，请在地址栏左侧的网站设置中允许“位置”权限';
+    if (/timeout/i.test(raw)) return '定位超时，请稍后重试';
+    return '定位失败，请检查系统和浏览器的定位权限';
+}
+
 export const icon = (name, size = 16) =>
     `<svg class="icon" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
 

@@ -12,7 +12,9 @@ export const CONFIG = {
         LOAD_TIMEOUT: 15000,
         FOCUS_ZOOM: 16,
         LOCATE_ZOOM: 14,
-        DEFAULT_ZOOM: 11
+        DEFAULT_ZOOM: 11,
+        // 默认中心（北京）。不指定时高德按 IP 定位，开代理时可能落到境外导致地图空白
+        DEFAULT_CENTER: [116.397428, 39.90923]
     },
 
     GEOCODE: {
