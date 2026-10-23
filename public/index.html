@@ -3,168 +3,153 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>地图标绘系统</title>
-    <link rel="stylesheet" href="./css/antd.css">
-    <link rel="stylesheet" href="./css/custom.css">
-    <link rel="stylesheet" href="./css/map-styles.css">
-    <!-- 地图API - 动态加载（支持高德/百度切换） -->
-    <script>
-        // 地图加载状态
-        window.mapLoaded = false;
-        window.mapCallbacks = [];
-        window.mapProvider = ''; // 'amap' 或 'baidu'
-
-        // 注册地图加载完成回调
-        window.onMapLoaded = function (callback) {
-            if (window.mapLoaded) {
-                callback();
-            } else {
-                window.mapCallbacks.push(callback);
-            }
-        };
-
-        // 地图加载完成触发
-        window._fireMapLoaded = function () {
-            window.mapLoaded = true;
-            console.log(`${window.mapProvider === 'amap' ? '高德' : '百度'}地图API加载成功`);
-            window.mapCallbacks.forEach(cb => cb());
-            window.mapCallbacks = [];
-        };
-
-        // 加载高德地图
-        function loadAMap(apiKey, securityJsCode) {
-            // 设置安全密钥（高德2.0要求）
-            if (securityJsCode) {
-                window._AMapSecurityConfig = { securityJsCode: securityJsCode };
-            }
-            // 高德2.0使用callback参数，SDK加载完成后自动调用
-            window._onAMapLoaded = function () {
-                window._fireMapLoaded();
-            };
-            const script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geocoder,AMap.Geolocation,AMap.CitySearch,AMap.ToolBar,AMap.Scale&callback=_onAMapLoaded`;
-            script.onerror = function () {
-                console.error('高德地图API脚本加载失败');
-            };
-            document.head.appendChild(script);
-        }
-
-        // 加载百度地图
-        function loadBaiduMap(apiKey) {
-            window.BMap_loadScriptTime = (new Date).getTime();
-            window.initBaiduMap = function () {
-                window.BMap = window.BMapGL;
-                window._fireMapLoaded();
-            };
-            const script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = `https://api.map.baidu.com/getscript?type=webgl&v=1.0&ak=${apiKey}&services=&t=${Date.now()}`;
-            script.onload = function () {
-                let checkCount = 0;
-                const checkBMap = setInterval(() => {
-                    checkCount++;
-                    if (window.BMapGL && window.BMapGL.Map) {
-                        clearInterval(checkBMap);
-                        window.initBaiduMap();
-                    } else if (checkCount > 50) {
-                        clearInterval(checkBMap);
-                        console.error('百度地图API加载超时');
-                    }
-                }, 100);
-            };
-            script.onerror = function () {
-                console.error('百度地图API脚本加载失败');
-            };
-            document.head.appendChild(script);
-        }
-
-        // 动态加载地图API
-        (function () {
-            fetch('/api/map-key')
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.success || !data.apiKey) {
-                        console.error('无法获取地图API密钥');
-                        return;
-                    }
-                    window.mapProvider = data.provider;
-                    if (data.provider === 'amap') {
-                        loadAMap(data.apiKey, data.securityJsCode);
-                    } else {
-                        loadBaiduMap(data.apiKey);
-                    }
-                })
-                .catch(err => {
-                    console.error('获取地图API密钥失败:', err);
-                });
-        })();
-    </script>
-    <!-- Ant Design -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/antd/4.24.14/antd.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>地图标注</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 22s-8-7.2-8-13a8 8 0 0 1 16 0c0 5.8-8 13-8 13Z' fill='%231677ff'/%3E%3Ccircle cx='12' cy='9' r='3' fill='white'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/components.css">
+    <link rel="stylesheet" href="./css/layout.css">
+    <script type="module" src="./js/main.js"></script>
 </head>
 
 <body>
-    <div class="ma-app">
-        <header class="ma-header">
-            <span class="ma-title">地图标绘系统</span>
-        </header>
-        <main class="ma-main">
-            <section class="ma-map-area">
-                <div id="map-container"></div>
-            </section>
-            <section class="address-drawer" id="drawerList">
-                <button class="drawer-toggle-btn" id="drawerToggleBtn" title="隐藏/显示地址列表">
-                    <svg viewBox="0 0 1024 1024" width="16" height="16" fill="currentColor">
-                        <path
-                            d="M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.8 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z">
-                        </path>
-                    </svg>
-                </button>
-                <button class="ma-upload-btn" id="upload-btn">
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 1024 1024"
-                        style="vertical-align:middle;margin-right:6px;">
-                        <path
-                            d="M544 864V672h128L512 480 352 672h128v192H352v64h320v-64h-128zM810.667 341.333H704V234.667L810.667 341.333zM213.333 128h554.667l128 128v597.333c0 23.467-19.2 42.667-42.667 42.667H213.333c-23.466 0-42.666-19.2-42.666-42.667V170.667c0-23.467 19.2-42.667 42.666-42.667z" />
-                    </svg>
-                    📤 上传Excel文件
-                </button>
-                <input type="file" id="excel-file" name="file" accept=".xlsx,.xls" style="display:none;">
-                <div class="ma-list-title">地址列表</div>
-                <ul class="ma-address-list" id="address-list">
-                    <!-- 地址卡片由JS渲染 -->
-                </ul>
-                <div class="ma-pagination">
-                    <button class="ma-page-btn" id="prev-page">&lt;</button>
-                    <span class="ma-page-info"><span id="current-page">1</span> / <span id="total-pages">1</span></span>
-                    <button class="ma-page-btn" id="next-page">&gt;</button>
-                </div>
-                <div id="upload-status" class="ma-upload-status"></div>
-            </section>
-        </main>
-        <!-- 移动端地图/列表切换按钮 -->
-        <button class="ma-fab" id="toggleViewBtn" style="display:none;">
-            <svg width="24" height="24" fill="currentColor">
-                <use xlink:href="#icon-list"></use>
-            </svg>
-        </button>
-        <!-- SVG 图标定义 -->
-        <svg style="display:none;">
-            <symbol id="icon-upload" viewBox="0 0 1024 1024">
-                <path d="M512 128l256 256h-160v256h-192V384H256z" />
-                <path d="M128 832h768v64H128z" />
-            </symbol>
-            <symbol id="icon-list" viewBox="0 0 1024 1024">
-                <path d="M128 192h768v64H128zM128 480h768v64H128zM128 768h768v64H128z" />
-            </symbol>
-        </svg>
-    </div>
+    <!-- 图标 -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+        <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12" /></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></symbol>
+        <symbol id="i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14" /></symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></symbol>
+        <symbol id="i-more" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></symbol>
+        <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" /></symbol>
+        <symbol id="i-crosshair" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="2" fill="currentColor" /></symbol>
+        <symbol id="i-fit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" /></symbol>
+        <symbol id="i-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.5" /></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></symbol>
+        <symbol id="i-navigation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z" /></symbol>
+        <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="m8 12 3 3 5-6" /></symbol>
+        <symbol id="i-alert-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 7.5v5M12 16.5h.01" /></symbol>
+        <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10" /><path d="M12 16.5v-5M12 7.5h.01" /></symbol>
+        <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></symbol>
+        <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6M8 13h8M8 17h8" /></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" /><path d="M21 3v5h-5" /></symbol>
+    </svg>
 
-    <script src="./js/main.js"></script>
+    <header class="topbar">
+        <div class="brand">
+            <svg class="brand-logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s-8-7.2-8-13a8 8 0 0 1 16 0c0 5.8-8 13-8 13Z" fill="currentColor" /><circle cx="12" cy="9" r="3" fill="#fff" /></svg>
+            <span>地图标注</span>
+        </div>
+        <div class="stats" id="stats" aria-live="polite"></div>
+        <div class="topbar-actions">
+            <button type="button" class="btn" id="btn-add" title="新增地址（N）">
+                <svg class="icon" width="16" height="16"><use href="#i-plus" /></svg><span class="btn-label">新增</span>
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-import" title="导入 Excel，也可直接拖拽文件到页面">
+                <svg class="icon" width="16" height="16"><use href="#i-upload" /></svg><span class="btn-label">导入 Excel</span>
+            </button>
+            <button type="button" class="btn" id="btn-export" title="导出为 Excel" disabled>
+                <svg class="icon" width="16" height="16"><use href="#i-download" /></svg><span class="btn-label">导出</span>
+            </button>
+            <button type="button" class="icon-btn icon-btn-bordered" id="btn-more" title="更多" aria-label="更多操作" aria-haspopup="menu">
+                <svg class="icon" width="18" height="18"><use href="#i-more" /></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <aside class="sidebar is-loading" id="sidebar" aria-label="地址列表">
+            <button type="button" class="sheet-handle" id="sheet-handle" aria-expanded="false" aria-label="展开/收起地址列表">
+                <span></span>
+            </button>
+
+            <div class="sidebar-top">
+                <div class="search">
+                    <svg class="icon search-icon" width="16" height="16"><use href="#i-search" /></svg>
+                    <input type="search" id="search" placeholder="搜索名称、地址或类型" autocomplete="off" aria-label="搜索地址">
+                    <kbd class="search-kbd">/</kbd>
+                    <button type="button" class="icon-btn icon-btn-sm" id="search-clear" aria-label="清除搜索" hidden>
+                        <svg class="icon" width="14" height="14"><use href="#i-x" /></svg>
+                    </button>
+                </div>
+                <div class="chips" id="chips" role="toolbar" aria-label="按类型筛选"></div>
+                <div class="list-meta" id="list-meta"></div>
+            </div>
+
+            <div class="onboarding" id="onboarding" hidden>
+                <div class="onboarding-art">
+                    <svg viewBox="0 0 24 24" width="40" height="40"><use href="#i-file" /></svg>
+                </div>
+                <h2>导入地址开始标注</h2>
+                <p>将 Excel 文件拖拽到页面任意位置，<br>或点击下方按钮选择文件</p>
+                <button type="button" class="btn btn-primary btn-lg" data-onboard="import">
+                    <svg class="icon" width="16" height="16"><use href="#i-upload" /></svg>选择 Excel 文件
+                </button>
+                <div class="onboarding-links">
+                    <button type="button" class="btn-link" data-onboard="template">下载导入模板</button>
+                    <span>·</span>
+                    <button type="button" class="btn-link" data-onboard="add">手动新增地址</button>
+                </div>
+                <div class="onboarding-help">
+                    <b>表格格式</b>
+                    <p>需包含 <code>地址</code> 列，可选 <code>名称</code>、<code>类型</code>、<code>经度</code>、<code>纬度</code>（也支持英文表头 name / address / type / lng / lat）。未填写坐标时系统会根据地址自动定位。</p>
+                </div>
+            </div>
+
+            <div class="list-skeleton" aria-hidden="true">
+                <div></div><div></div><div></div><div></div><div></div>
+            </div>
+            <ul class="address-list" id="address-list" role="listbox" aria-label="地址"></ul>
+            <div class="list-empty" id="list-empty" hidden></div>
+
+            <footer class="sidebar-foot">
+                <span><kbd>/</kbd> 搜索</span>
+                <span><kbd>↑</kbd><kbd>↓</kbd> 切换</span>
+                <span><kbd>N</kbd> 新增</span>
+                <span><kbd>Esc</kbd> 取消</span>
+            </footer>
+        </aside>
+
+        <section class="map-area">
+            <div id="map"></div>
+
+            <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="收起列表" aria-expanded="true" aria-controls="sidebar">
+                <svg class="icon" width="16" height="16"><use href="#i-chevron-left" /></svg>
+            </button>
+
+            <div class="map-controls" id="map-controls">
+                <div class="control-group">
+                    <button type="button" data-map="zoom-in" title="放大" aria-label="放大"><svg class="icon" width="18" height="18"><use href="#i-plus" /></svg></button>
+                    <button type="button" data-map="zoom-out" title="缩小" aria-label="缩小"><svg class="icon" width="18" height="18"><use href="#i-minus" /></svg></button>
+                </div>
+                <div class="control-group">
+                    <button type="button" data-map="fit" title="显示全部标记" aria-label="显示全部标记"><svg class="icon" width="18" height="18"><use href="#i-fit" /></svg></button>
+                </div>
+                <div class="control-group">
+                    <button type="button" data-map="locate" title="定位到当前位置" aria-label="定位到当前位置"><svg class="icon" width="18" height="18"><use href="#i-crosshair" /></svg></button>
+                </div>
+            </div>
+
+            <div class="map-status" id="map-status" hidden></div>
+
+            <div class="pick-banner" id="pick-banner" role="status" hidden>
+                <svg class="icon" width="16" height="16"><use href="#i-crosshair" /></svg>
+                <span>点击地图选择位置</span>
+                <button type="button" class="btn btn-sm" data-cancel>取消</button>
+            </div>
+        </section>
+    </main>
+
+    <div class="drop-overlay" id="drop-overlay" hidden>
+        <div class="drop-box">
+            <svg class="icon" width="40" height="40"><use href="#i-upload" /></svg>
+            <b>松开鼠标导入文件</b>
+            <span>支持 .xlsx / .xls / .csv</span>
+        </div>
+    </div>
 </body>
 
 </html>

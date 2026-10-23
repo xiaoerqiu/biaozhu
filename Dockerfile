@@ -9,17 +9,17 @@ RUN apk add --no-cache python3 make g++ sqlite
 COPY package*.json ./
 
 # 安装依赖（包括原生模块编译）
-RUN npm install --build-from-source
+RUN npm ci --omit=dev --build-from-source
 
 # 复制项目文件
 COPY . .
 
 # 创建必要的目录并设置权限
-RUN mkdir -p /app/uploads /app/data /app/logs && \
-    chmod -R 755 /app/uploads /app/data /app/logs
+RUN mkdir -p /app/data /app/logs && \
+    chmod -R 755 /app/data /app/logs
 
 # 声明需要持久化的卷（云平台会识别这些目录）
-VOLUME ["/app/data", "/app/uploads", "/app/logs"]
+VOLUME ["/app/data", "/app/logs"]
 
 # 清理构建工具减小镜像体积
 RUN apk del make g++ && rm -rf /var/cache/apk/*

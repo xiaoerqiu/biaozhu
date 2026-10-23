@@ -67,10 +67,12 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8080
+      - MAP_PROVIDER=${MAP_PROVIDER:-amap}
+      - AMAP_API_KEY=${AMAP_API_KEY}
+      - AMAP_SECURITY_KEY=${AMAP_SECURITY_KEY}
       - BAIDU_MAP_API_KEY=${BAIDU_MAP_API_KEY}
     volumes:
       - ./data:/app/data        # SQLite数据库持久化
-      - ./uploads:/app/uploads  # 上传文件持久化
       - ./logs:/app/logs        # 日志文件持久化
     restart: always
     healthcheck:
@@ -88,14 +90,13 @@ services:
 | 本地目录 | 容器目录 | 用途 |
 |---------|---------|------|
 | `./data` | `/app/data` | SQLite数据库文件 |
-| `./uploads` | `/app/uploads` | 用户上传的Excel文件 |
 | `./logs` | `/app/logs` | 应用日志文件 |
 
 **重要**: 确保这些目录存在且有正确的权限：
 
 ```bash
-mkdir -p data uploads logs
-chmod 755 data uploads logs
+mkdir -p data logs
+chmod 755 data logs
 ```
 
 ### 健康检查
@@ -303,9 +304,6 @@ mkdir -p $BACKUP_DIR
 
 # 备份数据库
 cp ./data/map_annotation.db $BACKUP_DIR/map_annotation_$DATE.db
-
-# 备份上传文件
-tar -czf $BACKUP_DIR/uploads_$DATE.tar.gz ./uploads
 
 # 保留最近7天的备份
 find $BACKUP_DIR -type f -mtime +7 -delete
