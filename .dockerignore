@@ -1,0 +1,21 @@
+# 依赖在镜像内重新安装（宿主机的原生模块与容器系统不兼容）
+node_modules
+npm-debug.log*
+
+# 运行时数据
+data
+logs
+uploads
+
+# 密钥通过环境变量传入，不打包进镜像
+.env
+
+.git
+.github
+.claude
+.vscode
+.idea
+openspec
+test
+*.md
+.DS_Store
